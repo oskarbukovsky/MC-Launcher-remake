@@ -14,9 +14,10 @@ namespace VoidCraftLauncher.Services
     public class ModpackManifestInfo
     {
         public string MinecraftVersion { get; set; } = "";
-        public string ModLoaderId { get; set; } = ""; // e.g. "neoforge-21.1.90" or "forge-47.2.0"
+        public string ModLoaderId { get; set; } = ""; // e.g. "neoforge-21.1.90"
         public string ModLoaderType { get; set; } = ""; // "neoforge", "forge", "fabric"
         public int ModCount { get; set; }
+        public int FileId { get; set; } // CurseForge FileID of installed version
     }
 
     public class ModpackInstaller
@@ -33,15 +34,15 @@ namespace VoidCraftLauncher.Services
             _httpClient = new HttpClient();
         }
 
-        public async Task<ModpackManifestInfo> InstallOrUpdateAsync(string modpackZipPath, string installPath)
+        public async Task<ModpackManifestInfo> InstallOrUpdateAsync(string modpackZipPath, string installPath, int? targetFileId = null)
         {
             StatusChanged?.Invoke("Otevírám balíček...");
             
             ModpackManifestInfo manifestInfo = new ModpackManifestInfo();
+            if (targetFileId.HasValue) manifestInfo.FileId = targetFileId.Value;
             
             using (var archive = ZipFile.OpenRead(modpackZipPath))
             {
-                // 1. Parse manifest.json
                 // 1. Detect format
                 var manifestEntry = archive.GetEntry("manifest.json");
                 var modrinthEntry = archive.GetEntry("modrinth.index.json");
@@ -82,6 +83,7 @@ namespace VoidCraftLauncher.Services
                 var debugLogPath = Path.Combine(installPath, "install_debug.txt");
                 using var debugLog = new StreamWriter(debugLogPath, false) { AutoFlush = true };
                 debugLog.WriteLine($"Install Start: {DateTime.Now}");
+                debugLog.WriteLine($"Target FileId: {targetFileId}");
                 debugLog.WriteLine($"Manifest Overrides: '{manifest.Overrides}'");
                 debugLog.WriteLine($"Manifest Files Count: {manifest.Files?.Count}");
 
@@ -89,14 +91,40 @@ namespace VoidCraftLauncher.Services
 
                 // 2. Resolve URLs for mods
                 var fileIds = manifest.Files.Select(f => f.FileID).Distinct();
-                // CurseForge API batch limit is often around 8k-10k IDs, but let's be safe. Modpacks usually have < 500 mods.
+                // CurseForge API batch limit is often around 8k-10k IDs, but let's be safe. Modpacks usually usually have < 500 mods.
                 var filesJson = await _api.GetFilesAsync(fileIds);
                 var curseFilesData = JsonSerializer.Deserialize<CurseFileDatas>(filesJson);
                 var curseFiles = curseFilesData?.Data ?? new List<CurseFile>();
 
+                // 2b. RESOLVE CATEGORIES (Mods vs ResourcePacks)
+                var modIds = curseFiles.Select(f => f.ModId).Distinct();
+                var modClassMap = new Dictionary<int, int>(); // ModId -> ClassId
+                try
+                {
+                    StatusChanged?.Invoke("Ověřuji typy souborů...");
+                    var modsJson = await _api.GetModsAsync(modIds);
+                    var modsData = JsonSerializer.Deserialize<CurseModsData>(modsJson);
+                    if (modsData?.Data != null)
+                    {
+                        foreach (var m in modsData.Data)
+                        {
+                            modClassMap[m.Id] = m.ClassId;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to resolve mod categories: {ex.Message}");
+                }
+
                 // 3. Smart Update Logic
                 var modsDir = Path.Combine(installPath, "mods");
+                var rpDir = Path.Combine(installPath, "resourcepacks");
+                var shaderDir = Path.Combine(installPath, "shaderpacks");
+                
                 Directory.CreateDirectory(modsDir);
+                Directory.CreateDirectory(rpDir);
+                Directory.CreateDirectory(shaderDir);
 
                 // Load previously installed files tracking
                 var installedFilesPath = Path.Combine(installPath, "installed_files.json");
@@ -112,7 +140,9 @@ namespace VoidCraftLauncher.Services
                 }
 
                 // A. Delete old mods (ONLY if they were installed by us previously)
-                // This preserves user-added mods (Optifine, shaders, etc.)
+                // We primarily scan 'mods' folder. RPs in 'resourcepacks' might pile up if we don't track them well,
+                // but doing a full scan of all folders is risky.
+                // For now, let's clean 'mods' folder as usual.
                 var existingFiles = Directory.GetFiles(modsDir, "*.jar");
                 var newModNames = curseFiles.Select(f => f.FileName).ToHashSet();
                 
@@ -127,9 +157,8 @@ namespace VoidCraftLauncher.Services
                         if (previouslyInstalledFiles.Contains(fileName))
                         {
                             File.Delete(file);
-                            StatusChanged?.Invoke($"Odstraňuji starý mod: {fileName}");
+                            StatusChanged?.Invoke($"Odstraňuji starý soubor: {fileName}");
                         }
-                        // If it wasn't tracked, assume it's user-added -> KEEP
                     }
                 }
                 
@@ -145,7 +174,16 @@ namespace VoidCraftLauncher.Services
                 foreach (var mod in curseFiles)
                 {
                     current++;
-                    var destPath = Path.Combine(modsDir, mod.FileName);
+                    
+                    // Determine Target Directory
+                    string targetDir = modsDir; // Default
+                    if (modClassMap.TryGetValue(mod.ModId, out int classId))
+                    {
+                        if (classId == 12) targetDir = rpDir; // Resource Pack
+                        else if (classId == 6552 || classId == 4546) targetDir = shaderDir; // Shader Pack (6552 is standard, 4546 is 'Twitch Integration' but sometimes used for customizations)
+                    }
+
+                    var destPath = Path.Combine(targetDir, mod.FileName);
 
                     if (File.Exists(destPath))
                     {
@@ -153,12 +191,12 @@ namespace VoidCraftLauncher.Services
                         continue;
                     }
 
-                    StatusChanged?.Invoke($"Stahuji mody ({current}/{total}): {mod.DisplayName}");
+                    StatusChanged?.Invoke($"Stahuji ({current}/{total}): {mod.DisplayName}");
                     ProgressChanged?.Invoke((double)current / total);
 
                     // Get download URL - use CDN fallback if API returns null
                     var url = mod.DownloadUrl;
-                    debugLog.WriteLine($"Processing Mod: {mod.FileName} (ID: {mod.Id}) - URL: {url}");
+                    debugLog.WriteLine($"Processing Mod: {mod.FileName} (ID: {mod.Id}, Class: {classId}) - URL: {url}");
                     if (string.IsNullOrEmpty(url))
                     {
                         // CurseForge CDN pattern: https://edge.forgecdn.net/files/{id[0:4]}/{id[4:]}/{filename}
@@ -181,7 +219,6 @@ namespace VoidCraftLauncher.Services
                         catch (Exception ex)
                         {
                             StatusChanged?.Invoke($"Chyba stahování {mod.FileName}: {ex.Message}");
-                            // Continue to next mod instead of failing completely
                         }
                     }
                 }
@@ -202,11 +239,26 @@ namespace VoidCraftLauncher.Services
                     
                     if (extractedCount < 20) debugLog.WriteLine($"ZIP Entry Sample: {entryFullName}");
 
-                    if (entryFullName.StartsWith(overridesPrefix, StringComparison.OrdinalIgnoreCase) && !entryFullName.EndsWith("/"))
+                    if (entryFullName.StartsWith(overridesPrefix, StringComparison.OrdinalIgnoreCase))
                     {
-                        debugLog.WriteLine($"MATCH Overrides: {entryFullName}");
+                        // Remove prefix
                         var relativePath = entryFullName.Substring(overridesPrefix.Length);
+                        
+                        // If empty (just the folder itself), skip
+                        if (string.IsNullOrEmpty(relativePath)) continue;
+
                         var targetPath = Path.Combine(installPath, relativePath);
+
+                        // If it is a directory entry (ends with /)
+                        if (entryFullName.EndsWith("/"))
+                        {
+                            debugLog.WriteLine($"Creating Directory: {targetPath}");
+                            Directory.CreateDirectory(targetPath);
+                            continue;
+                        }
+
+                        // It is a file
+                        debugLog.WriteLine($"MATCH Overrides File: {entryFullName}");
 
                         // PROTECTED PATHS check
                         if (IsProtected(relativePath))
@@ -218,7 +270,7 @@ namespace VoidCraftLauncher.Services
                         // For non-protected files (like mods, scripts, core configs), we should OVERWRITE
                         // to ensure the modpack is up to date (and to fix corrupt/empty files).
                         
-                        // Ensure directory exists
+                        // Ensure directory exists (in case directory entry was missing)
                         Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
                         entry.ExtractToFile(targetPath, overwrite: true);
                         extractedCount++;

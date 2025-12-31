@@ -85,5 +85,20 @@ namespace VoidCraftLauncher.Services
 
             return await response.Content.ReadAsStringAsync();
         }
+
+        public async Task<string> GetModsAsync(IEnumerable<int> modIds)
+        {
+            var json = JsonSerializer.Serialize(new { modIds = modIds });
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("v1/mods", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception($"CurseForge API error: {response.StatusCode}");
+            }
+
+            return await response.Content.ReadAsStringAsync();
+        }
     }
 }

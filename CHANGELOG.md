@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3-alpha
+
+### 🔧 Opravy & Vylepšení
+- **Smart Install**: Launcher nyní kontroluje nainstalovanou verzi modpacku. Pokud je aktuální, instalace se přeskočí (zrychlení startu a zachování configů).
+- **File Routing**: Resource Packy a Shader Packy se nyní automaticky instalují do správných složek (`resourcepacks/`, `shaderpacks/`) místo `mods/`.
+- **Overrides Fix**: Opraveno kopírování prázdných složek z `overrides` (např. pro shadery).
+
 ## 1.0.2-alpha
 
 ### 🔧 Opravy Hotfix

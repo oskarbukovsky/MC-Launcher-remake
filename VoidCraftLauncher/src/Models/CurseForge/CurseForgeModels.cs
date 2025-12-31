@@ -101,4 +101,26 @@ namespace VoidCraftLauncher.Models.CurseForge
         [JsonPropertyName("algo")]
         public int Algo { get; set; } // 1 = SHA1, 2 = MD5
     }
+
+    // Pro odpověď z /v1/mods (batch)
+    public class CurseModsData
+    {
+        [JsonPropertyName("data")]
+        public List<CurseMod> Data { get; set; }
+    }
+
+    public class CurseMod
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("classId")]
+        public int ClassId { get; set; } // 6=Mod, 12=ResourcePack, 6552=ShaderPack?
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+        
+        [JsonPropertyName("slug")]
+        public string Slug { get; set; }
+    }
 }

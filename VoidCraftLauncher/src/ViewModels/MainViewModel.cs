@@ -507,14 +507,23 @@ public partial class MainViewModel : ViewModelBase
                 
                 // Debug.WriteLine($"[PlayModpack] ProjectId: {CurrentModpack.ProjectId}, FileId: {CurrentModpack.CurrentVersion?.FileId}");
                 
-                // Try to get FileId - if it's missing, fetch latest from API
+                // Check if we need to install/update
+                bool needsUpdate = true;
+                
+                // Load currently installed version info
+                ModpackManifestInfo installedManifest = ModpackInstaller.LoadManifestInfo(modpackDir);
+                
                 int fileId = 0;
-                if (!int.TryParse(CurrentModpack.CurrentVersion?.FileId, out fileId) || fileId <= 0)
+                
+                // Try to resolve target FileId
+                if (int.TryParse(CurrentModpack.CurrentVersion?.FileId, out var parsedId) && parsedId > 0)
                 {
-                    // FileId is missing, try to get latest version from API
-                    if (CurrentModpack.ProjectId > 0)
-                    {
-                        try
+                    fileId = parsedId;
+                }
+                else if (CurrentModpack.ProjectId > 0)
+                {
+                    // FileId missing (custom or API error), try fetch latest
+                     try
                         {
                             LaunchStatus = "Načítám nejnovější verzi...";
                             var filesJson = await _curseForgeApi.GetModpackFilesAsync(CurrentModpack.ProjectId);
@@ -545,10 +554,18 @@ public partial class MainViewModel : ViewModelBase
                         {
                             LogService.Error("[PlayModpack] Failed to fetch latest version", ex);
                         }
-                    }
                 }
                 
-                if (CurrentModpack.ProjectId > 0 && fileId > 0)
+                // COMPARE VERSIONS
+                if (installedManifest != null && fileId > 0 && installedManifest.FileId == fileId)
+                {
+                    LaunchStatus = "Verze je aktuální. Přeskakuji instalaci.";
+                    manifestInfo = installedManifest;
+                    needsUpdate = false;
+                    apiSuccess = true; // Mark as success since we are good to go
+                }
+                
+                if (needsUpdate && CurrentModpack.ProjectId > 0 && fileId > 0)
                 {
                         try 
                         {
@@ -588,7 +605,7 @@ public partial class MainViewModel : ViewModelBase
 
                                 LaunchStatus = "Ověřuji mody...";
                                 // This checks for missing files and re-downloads them
-                                manifestInfo = await _modpackInstaller.InstallOrUpdateAsync(tempZipPath, modpackDir);
+                                manifestInfo = await _modpackInstaller.InstallOrUpdateAsync(tempZipPath, modpackDir, fileId);
                                 apiSuccess = true;
                                 SaveModpacks();
                                 
@@ -602,7 +619,7 @@ public partial class MainViewModel : ViewModelBase
                         }
                 }
 
-                if (!apiSuccess)
+                if (!apiSuccess && needsUpdate)
                 {
                      // Try local backups or cached manifest checking
                     var downloadsDir = Path.Combine(_launcherService.BasePath, "downloads");
@@ -613,7 +630,7 @@ public partial class MainViewModel : ViewModelBase
                         if (!string.IsNullOrEmpty(localZip))
                         {
                              LaunchStatus = "Instaluji z lokální zálohy...";
-                             manifestInfo = await _modpackInstaller.InstallOrUpdateAsync(localZip, modpackDir);
+                             manifestInfo = await _modpackInstaller.InstallOrUpdateAsync(localZip, modpackDir, fileId);
                         }
                     }
                 }
