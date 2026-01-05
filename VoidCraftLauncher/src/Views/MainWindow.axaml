@@ -29,106 +29,121 @@
     <Grid ColumnDefinitions="300,*">
         <!-- Sidebar -->
         <Border Grid.Column="0" Background="#202020">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Spacing="10" Margin="15">
-                    <TextBlock Text="VOID-CRAFT.EU" FontSize="24" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,10,0,0"/>
-                    <TextBlock Text="{Binding Greeting}" Foreground="#FFDD00" FontSize="11" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
-                    
-                    <!-- User Profile -->
-                    <Border Background="#303030" CornerRadius="8" Padding="10">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <asyncImage:AdvancedImage Width="40" Height="40" CornerRadius="4"
-                                Source="{Binding PlayerSkinUrl, FallbackValue='https://crafatar.com/avatars/MHF_Steve?size=40&amp;overlay'}"/>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{Binding UserSession.Username, FallbackValue='Guest'}" FontWeight="SemiBold" Foreground="White"/>
-                                <Button Content="PŘIHLÁSIT SE" Command="{Binding LoginCommand}" IsVisible="{Binding !IsLoggedIn}" 
-                                        FontSize="10" Padding="8,4" Height="26" Background="#007ACC" Foreground="White" CornerRadius="4" Margin="0,2,0,0"/>
-                                <TextBlock Text="Online" IsVisible="{Binding IsLoggedIn}" FontSize="12" Foreground="#44FF44"/>
+            <Grid RowDefinitions="Auto,*,Auto">
+                <!-- Header / Profile / Navigation (Scrollable) -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="10" Margin="15">
+                        <TextBlock Text="VOID-CRAFT.EU" FontSize="24" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                        <TextBlock Text="{Binding Greeting}" Foreground="#FFDD00" FontSize="11" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+                        
+                        <!-- User Profile -->
+                        <Border Background="#303030" CornerRadius="8" Padding="10">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <asyncImage:AdvancedImage Width="40" Height="40" CornerRadius="4"
+                                    Source="{Binding PlayerSkinUrl, FallbackValue='https://crafatar.com/avatars/MHF_Steve?size=40&amp;overlay'}"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding UserSession.Username, FallbackValue='Guest'}" FontWeight="SemiBold" Foreground="White"/>
+                                    <Button Content="PŘIHLÁSIT SE" Command="{Binding OpenLoginModalCommand}" IsVisible="{Binding !IsLoggedIn}" 
+                                            FontSize="10" Padding="8,4" Height="26" Background="#007ACC" Foreground="White" CornerRadius="4" Margin="0,2,0,0"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding IsLoggedIn}">
+                                        <TextBlock Text="Online" FontSize="12" Foreground="#44FF44" VerticalAlignment="Center"/>
+                                        <Button Content="Odhlásit" Command="{Binding LogoutCommand}" 
+                                                FontSize="10" Padding="8,4" Height="26" Background="#CC3333" Foreground="White" CornerRadius="4"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Spacer -->
+                        <Border Height="20"/>
+
+                        <!-- NAVIGATION -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="NAVIGACE" FontSize="10" FontWeight="Bold" Foreground="#666666" Margin="0,0,0,5"/>
+                            
+                            <Button Command="{Binding GoToHomeCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" Padding="10" CornerRadius="8">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="🏠" FontSize="16"/>
+                                    <TextBlock Text="Moje Modpacky" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
+                            
+                            <Button Command="{Binding GoToBrowserCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" Padding="10" CornerRadius="8">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="🌐" FontSize="16"/>
+                                    <TextBlock Text="Prohlížeč" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
+                            
+                            <Button Command="{Binding GoToSettingsCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" Padding="10" CornerRadius="8">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="⚙" FontSize="16"/>
+                                    <TextBlock Text="Nastavení" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
+
+                        <!-- Server Status Card -->
+                        <Border Background="#222222" CornerRadius="8" Padding="10" Margin="0,0,0,15" ClipToBounds="True">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="STAV SERVERU" FontSize="10" FontWeight="Bold" Foreground="#666666"/>
+                                
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <!-- Better Approach for Dot -->
+                                    <Panel VerticalAlignment="Center">
+                                        <Border Width="8" Height="8" CornerRadius="4" Background="#44FF44" IsVisible="{Binding IsServerOnline}">
+                                            <Border.Effect>
+                                                <DropShadowEffect BlurRadius="4" Color="#44FF44" Opacity="0.6"/>
+                                            </Border.Effect>
+                                        </Border>
+                                        <Border Width="8" Height="8" CornerRadius="4" Background="#FF4444" IsVisible="{Binding !IsServerOnline}"/>
+                                    </Panel>
+
+                                    <TextBlock Text="{Binding ServerMotd}" FontWeight="Bold" Foreground="White" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                                
+                                <TextBlock Text="{Binding ServerStatusText}" FontSize="11" Foreground="#AAAAAA"/>
+                                <ProgressBar Value="{Binding ServerPlayerCount}" Maximum="{Binding ServerMaxPlayers}" Height="4" CornerRadius="2" Background="#333333" Foreground="#44FF44"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Quick Links -->
+                        <StackPanel Spacing="0">
+                            <Button Content="🌐 Webové stránky" Command="{Binding OpenUrlCommand}" CommandParameter="https://void-craft.eu/"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
+                            
+                            <Button Content="💬 Discord" Command="{Binding OpenUrlCommand}" CommandParameter="https://discord.com/invite/8rjhkck9w4"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
+                            
+                            <Button Content="📘 Facebook" Command="{Binding OpenUrlCommand}" CommandParameter="https://www.facebook.com/share/17i6QGG6jn/"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
+                            
+                            <Button Content="📸 Instagram" Command="{Binding OpenUrlCommand}" CommandParameter="https://www.instagram.com/void_craft.eu"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
+                            
+                            <Button Content="🎬 YouTube" Command="{Binding OpenUrlCommand}" CommandParameter="https://www.youtube.com/@void-craft-eu"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
+                        </StackPanel>
+
                     </StackPanel>
+                </ScrollViewer>
+                
+                <!-- Footer: Version & Check Update -->
+                <Border Grid.Row="2" Padding="15" Background="#1A1A1A">
+                    <Grid ColumnDefinitions="*,Auto">
+                         <TextBlock Text="{Binding AppVersion}" Foreground="#666" FontSize="11" VerticalAlignment="Center"/>
+                         
+                         <Button Grid.Column="1" Command="{Binding CheckForUpdatesCommand}" Background="Transparent" Padding="5" ToolTip.Tip="Zkontrolovat aktualizace">
+                            <TextBlock Text="🔄" Foreground="#888" FontSize="12"/>
+                         </Button>
+                    </Grid>
                 </Border>
-                    
-                    <!-- Spacer -->
-                    <Border Height="20"/>
-
-                    <!-- NAVIGATION -->
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="NAVIGACE" FontSize="10" FontWeight="Bold" Foreground="#666666" Margin="0,0,0,5"/>
-                        
-                        <Button Command="{Binding GoToHomeCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" Padding="10" CornerRadius="8">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBlock Text="🏠" FontSize="16"/>
-                                <TextBlock Text="Moje Modpacky" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                            </StackPanel>
-                        </Button>
-                        
-                        <Button Command="{Binding GoToBrowserCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" Padding="10" CornerRadius="8">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBlock Text="🌐" FontSize="16"/>
-                                <TextBlock Text="Prohlížeč" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                            </StackPanel>
-                        </Button>
-                        
-                        <Button Command="{Binding GoToSettingsCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" Padding="10" CornerRadius="8">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBlock Text="⚙" FontSize="16"/>
-                                <TextBlock Text="Nastavení" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-
-                    <!-- Server Status Card -->
-                    <Border Background="#222222" CornerRadius="8" Padding="0" Margin="0,0,0,15" ClipToBounds="True">
-                        <StackPanel Spacing="6">
-                            <TextBlock Text="STAV SERVERU" FontSize="10" FontWeight="Bold" Foreground="#666666"/>
-                            
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <!-- Better Approach for Dot -->
-                                <Panel VerticalAlignment="Center">
-                                    <Border Width="8" Height="8" CornerRadius="4" Background="#44FF44" IsVisible="{Binding IsServerOnline}">
-                                        <Border.Effect>
-                                            <DropShadowEffect BlurRadius="4" Color="#44FF44" Opacity="0.6"/>
-                                        </Border.Effect>
-                                    </Border>
-                                    <Border Width="8" Height="8" CornerRadius="4" Background="#FF4444" IsVisible="{Binding !IsServerOnline}"/>
-                                </Panel>
-
-                                <TextBlock Text="{Binding ServerMotd}" FontWeight="Bold" Foreground="White" FontSize="12" TextTrimming="CharacterEllipsis"/>
-                            </StackPanel>
-                            
-                            <TextBlock Text="{Binding ServerStatusText}" FontSize="11" Foreground="#AAAAAA"/>
-                            <ProgressBar Value="{Binding ServerPlayerCount}" Maximum="{Binding ServerMaxPlayers}" Height="4" CornerRadius="2" Background="#333333" Foreground="#44FF44"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Quick Links -->
-                    <StackPanel Spacing="0">
-                        <Button Content="🌐 Webové stránky" Command="{Binding OpenUrlCommand}" CommandParameter="https://void-craft.eu/"
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
-                        
-                        <Button Content="💬 Discord" Command="{Binding OpenUrlCommand}" CommandParameter="https://discord.com/invite/8rjhkck9w4"
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
-                        
-                        <Button Content="📘 Facebook" Command="{Binding OpenUrlCommand}" CommandParameter="https://www.facebook.com/share/17i6QGG6jn/"
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
-                        
-                        <Button Content="📸 Instagram" Command="{Binding OpenUrlCommand}" CommandParameter="https://www.instagram.com/void_craft.eu"
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
-                        
-                        <Button Content="🎬 YouTube" Command="{Binding OpenUrlCommand}" CommandParameter="https://www.youtube.com/@void-craft-eu"
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
-                    </StackPanel>
-
-            <!-- Spacer -->
-            <Border Height="20"/>
-            
-            </StackPanel>
-            </ScrollViewer>
+            </Grid>
         </Border>
 
         <!-- Main Content (Modpack Browser) -->
@@ -458,5 +473,56 @@
                     </Grid>
                 </Grid>
             </Border>
+
+
+    <!-- Login Modal Overlay -->
+    <Grid Grid.ColumnSpan="2" IsVisible="{Binding IsLoginModalVisible}" Background="#CC000000">
+        <Border Background="#202020" CornerRadius="12" BorderBrush="#333333" BorderThickness="1" 
+                HorizontalAlignment="Center" VerticalAlignment="Center" 
+                Width="400" Padding="20">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="20" Color="Black" Opacity="0.8"/>
+            </Border.Effect>
+            
+            <StackPanel Spacing="20">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="✕" Command="{Binding CloseLoginModalCommand}" 
+                            Background="Transparent" Foreground="#666" FontSize="16" Padding="5"/>
+                </StackPanel>
+                
+                <TextBlock Text="Přihlášení" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Foreground="White"/>
+                
+                <TabControl>
+                    <TabItem Header="Microsoft" FontSize="16">
+                        <StackPanel Margin="0,20,0,0" Spacing="15">
+                            <TextBlock Text="Přihlásit se pomocí Microsoft účtu (bezpečně a oficiálně)." 
+                                       TextWrapping="Wrap" Foreground="#AAA" TextAlignment="Center"/>
+                            <Button Content="Přihlásit se přes Microsoft" Command="{Binding LoginMicrosoftCommand}"
+                                    Background="#007ACC" Foreground="White" FontWeight="Bold" FontSize="16"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="15"/>
+                        </StackPanel>
+                    </TabItem>
+                    
+                    <TabItem Header="Offline (Warez)" FontSize="16">
+                         <StackPanel Margin="0,20,0,0" Spacing="15">
+                            <TextBlock Text="Hraj bez originálního účtu. Skiny nebudou fungovat (kromě serverů s pluginem)." 
+                                       TextWrapping="Wrap" Foreground="#AAA" TextAlignment="Center" FontSize="12"/>
+                            
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Herní přezdívka" FontWeight="Bold" Foreground="White"/>
+                                <TextBox Text="{Binding OfflineUsername}" Watermark="Např. Player123" 
+                                         Background="#333333" Foreground="White" BorderThickness="0"/>
+                            </StackPanel>
+                            
+                            <Button Content="Přihlásit Offline" Command="{Binding LoginOfflineCommand}"
+                                    Background="#444444" Foreground="White" FontWeight="Bold" FontSize="16"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="15"/>
+                        </StackPanel>
+                    </TabItem>
+                </TabControl>
+            </StackPanel>
+        </Border>
+    </Grid>
+
     </Grid>
 </Window>

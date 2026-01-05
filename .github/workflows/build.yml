@@ -80,15 +80,116 @@ jobs:
       - name: Publish
         run: dotnet publish VoidCraftLauncher/VoidCraftLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish
 
-      - name: Upload Artifact
+      - name: Install Inno Setup
+        run: choco install innosetup
+
+      - name: Get Version for Inno Setup
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(grep -oP '<Version>\K[^<]+' VoidCraftLauncher/VoidCraftLauncher.csproj)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Compile Installer (Inno Setup)
+        run: |
+           "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.get_version.outputs.version }} setup.iss
+
+      - name: Upload Artifact (Setup)
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoidCraftLauncher-Setup
+          path: Output/VoidCraftLauncher_Setup.exe
+
+      - name: Upload Artifact (Exe)
         uses: actions/upload-artifact@v4
         with:
           name: VoidCraftLauncher-Windows
           path: ./publish/VoidCraftLauncher.exe
 
+  # 2b. Build Linux (Binary + AppImage)
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore Dependencies
+        run: dotnet restore VoidCraftLauncher/VoidCraftLauncher.csproj
+
+      - name: Publish (Self-Contained)
+        run: dotnet publish VoidCraftLauncher/VoidCraftLauncher.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish_linux
+
+      - name: Prepare AppImage Structure
+        run: |
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p AppDir/usr/share/applications
+          
+          # Copy Binary
+          cp ./publish_linux/VoidCraftLauncher AppDir/usr/bin/voidcraftlauncher
+          chmod +x AppDir/usr/bin/voidcraftlauncher
+          
+          # Get Icon (Assuming VOID-CRAFT.ico exists in root or convert it. For Linux preferred png)
+          # We will try to find a png or convert ico if possible, or just copy ico as fallback
+          # Using ImageMagick to convert ico to png if available (ubuntu-latest usually has it)
+          if [ -f "VOID-CRAFT.ico" ]; then
+             convert "VOID-CRAFT.ico[0]" AppDir/voidcraftlauncher.png || cp VOID-CRAFT.ico AppDir/voidcraftlauncher.png
+          else
+             touch AppDir/voidcraftlauncher.png # Dummy if missing
+          fi
+          cp AppDir/voidcraftlauncher.png AppDir/.DirIcon
+          cp AppDir/voidcraftlauncher.png AppDir/usr/share/icons/hicolor/256x256/apps/voidcraftlauncher.png
+          
+          # Create Desktop Entry
+          cat > AppDir/voidcraft-launcher.desktop <<EOF
+          [Desktop Entry]
+          Name=VoidCraft Launcher
+          Exec=voidcraftlauncher
+          Icon=voidcraftlauncher
+          Type=Application
+          Categories=Game;
+          EOF
+          
+          cp AppDir/voidcraft-launcher.desktop AppDir/usr/share/applications/
+
+          # Create AppRun
+          cat > AppDir/AppRun <<EOF
+          #!/bin/sh
+          HERE="\$(dirname "\$(readlink -f "\${0}")")"
+          export PATH="\${HERE}/usr/bin:\${PATH}"
+          exec voidcraftlauncher "\$@"
+          EOF
+          chmod +x AppDir/AppRun
+
+      - name: Build AppImage and Upload
+        run: |
+          # Download appimagetool
+          wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          
+          # Build
+          ./appimagetool-x86_64.AppImage AppDir VoidCraftLauncher-Linux-x64.AppImage
+          
+      - name: Upload Artifact (AppImage)
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoidCraftLauncher-Linux-AppImage
+          path: VoidCraftLauncher-Linux-x64.AppImage
+
+      - name: Upload Artifact (Binary)
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoidCraftLauncher-Linux-Binary
+          path: ./publish_linux/VoidCraftLauncher
+
   # 3. Create Release (Only if check-version said true)
   create-release:
-    needs: [build-windows, check-version]
+    needs: [build-windows, build-linux, check-version]
     if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -100,10 +201,28 @@ jobs:
       - name: Prepare Version
         run: echo "VERSION=${{ needs.check-version.outputs.version }}" >> $GITHUB_ENV
 
-      - name: Download Artifact
+      - name: Download Artifact (Windows Exe)
         uses: actions/download-artifact@v4
         with:
           name: VoidCraftLauncher-Windows
+          path: ./release_assets
+
+      - name: Download Artifact (Windows Setup)
+        uses: actions/download-artifact@v4
+        with:
+          name: VoidCraftLauncher-Setup
+          path: ./release_assets
+
+      - name: Download Artifact (Linux AppImage)
+        uses: actions/download-artifact@v4
+        with:
+          name: VoidCraftLauncher-Linux-AppImage
+          path: ./release_assets
+      
+      - name: Download Artifact (Linux Binary)
+        uses: actions/download-artifact@v4
+        with:
+          name: VoidCraftLauncher-Linux-Binary
           path: ./release_assets
 
       - name: Extract Release Notes
@@ -129,7 +248,11 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           name: v${{ env.VERSION }}
-          files: ./release_assets/VoidCraftLauncher.exe
+          files: |
+            ./release_assets/VoidCraftLauncher.exe
+            ./release_assets/VoidCraftLauncher_Setup.exe
+            ./release_assets/VoidCraftLauncher-Linux-x64.AppImage
+            ./release_assets/VoidCraftLauncher
           body_path: release_body.md
           draft: false
           prerelease: ${{ contains(env.VERSION, 'alpha') || contains(env.VERSION, 'beta') }}

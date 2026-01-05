@@ -8,6 +8,7 @@ Official custom Minecraft launcher for the **VOID-CRAFT** community. Built with 
 - 🚀 **Nativní Výkon**: Startuje rychleji a spotřebovává méně RAM než Electron verze.
 - 🔄 **Smart Updates**: Automatické aktualizace modpacků bez ztráty vlastních módů.
 - 🔐 **Microsoft Login**: Bezpečné přihlášení přes Microsoft účet.
+- 🏴‍☠️ **Offline Mode**: Možnost hraní pro hráče bez originálního účtu (Warez/Offline).
 - 🛠️ **Optimalizace**: Přednastavené JVM argumenty pro maximální FPS (G1GC, ZGC).
 - 📁 **Centrální Data**: Všechny instance jsou uloženy v `Dokumenty/.voidcraft`.
 

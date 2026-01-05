@@ -25,6 +25,9 @@ public partial class LauncherConfig : ObservableObject
     private GcType _selectedGc = GcType.G1GC;
 
     public System.Collections.Generic.Dictionary<string, InstanceConfig> InstanceOverrides { get; set; } = new();
+
+    [ObservableProperty]
+    private string? _lastOfflineUsername;
 }
 
 public enum GcType

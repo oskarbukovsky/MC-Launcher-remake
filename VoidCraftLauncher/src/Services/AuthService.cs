@@ -15,7 +15,7 @@ namespace VoidCraftLauncher.Services;
 public class AuthService
 {
     // Azure Client ID for VoidCraft Launcher
-    private const string ClientId = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb";
+    private const string ClientId = "a12295b0-3505-46f1-a299-88ae9cc80174";
     private readonly IPublicClientApplication _msalApp;
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -252,6 +252,20 @@ public class AuthService
 
         var result = await response.Content.ReadFromJsonAsync<McProfileResponse>(_jsonOptions);
         return result ?? throw new Exception("Nepodařilo se načíst Minecraft profil");
+    }
+
+    public async Task LogoutAsync()
+    {
+        var accounts = await _msalApp.GetAccountsAsync();
+        foreach (var account in accounts)
+        {
+            await _msalApp.RemoveAsync(account);
+        }
+
+        if (File.Exists(_tokenCacheFile))
+        {
+            File.Delete(_tokenCacheFile);
+        }
     }
 
     public MSession LoginOffline(string username)

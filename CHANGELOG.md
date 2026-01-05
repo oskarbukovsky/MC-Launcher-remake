@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0-alpha
+
+### ✨ Nové Funkce
+- **Offline Login**: Přidána možnost přihlášení pro "Warez" hráče (Offline Mode) přímo v aplikaci.
+- **In-App Login**: Přepracováno UI přihlašování – nyní se používá moderní vyskakovací okno (Overlay) místo přesměrování.
+- **Odhlášení**: Přidáno tlačítko pro odhlášení uživatele.
+
+### 🔧 Opravy & Změny
+- **Auth**: Aktualizováno Microsoft Auth Client ID (schváleno Mojang).
+- **UI**: Vylepšen vzhled uživatelského profilu v postranním panelu.
+
 ## 1.0.3-alpha
 
 ### 🔧 Opravy & Vylepšení
