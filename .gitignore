@@ -32,8 +32,8 @@ Desktop.ini
 node_modules/
 package-lock.json
 
-# VoidCraft Specific
-/VoidCraftLauncher/Instances/
-/VoidCraftLauncher/IconConverter/
+# TechCraft Specific
+/TechCraftLauncher/Instances/
+/TechCraftLauncher/IconConverter/
 installed_files.json
 version.json

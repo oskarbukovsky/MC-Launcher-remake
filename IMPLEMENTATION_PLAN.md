@@ -54,10 +54,10 @@ Nový, stabilní Minecraft launcher postavený na **C# + Avalonia UI + CmlLib.Co
 ### Struktura projektu
 
 ```
-VoidCraftLauncher/
-├── VoidCraftLauncher.sln
+TechCraftLauncher/
+├── TechCraftLauncher.sln
 ├── src/
-│   ├── VoidCraftLauncher/           # Hlavní Avalonia aplikace
+│   ├── TechCraftLauncher/           # Hlavní Avalonia aplikace
 │   │   ├── App.axaml                # Avalonia XAML
 │   │   ├── MainWindow.axaml         # Hlavní okno
 │   │   ├── Views/
@@ -79,7 +79,7 @@ VoidCraftLauncher/
 │   │   ├── Controls/                # Custom controls
 │   │   ├── Themes/                  # Dark theme styly
 │   │   └── Assets/
-│   └── VoidCraftLauncher.Core/      # Shared library
+│   └── TechCraftLauncher.Core/      # Shared library
 ├── assets/
 │   ├── icons/
 │   └── images/

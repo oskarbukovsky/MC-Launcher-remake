@@ -26,8 +26,8 @@ jobs:
       - name: Get Version from .csproj
         id: get_version
         run: |
-          if [ -f "VoidCraftLauncher/VoidCraftLauncher.csproj" ]; then
-             VERSION=$(grep -oP '<Version>\K[^<]+' VoidCraftLauncher/VoidCraftLauncher.csproj)
+          if [ -f "TechCraftLauncher/TechCraftLauncher.csproj" ]; then
+             VERSION=$(grep -oP '<Version>\K[^<]+' TechCraftLauncher/TechCraftLauncher.csproj)
           else
              echo "Error: .csproj file not found"
              exit 1
@@ -72,19 +72,19 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Restore Dependencies
-        run: dotnet restore VoidCraftLauncher/VoidCraftLauncher.csproj
+        run: dotnet restore TechCraftLauncher/TechCraftLauncher.csproj
 
       - name: Build
-        run: dotnet build VoidCraftLauncher/VoidCraftLauncher.csproj --configuration Release --no-restore
+        run: dotnet build TechCraftLauncher/TechCraftLauncher.csproj --configuration Release --no-restore
 
       - name: Publish
-        run: dotnet publish VoidCraftLauncher/VoidCraftLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish
+        run: dotnet publish TechCraftLauncher/TechCraftLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: VoidCraftLauncher-Windows
-          path: ./publish/VoidCraftLauncher.exe
+          name: TechCraftLauncher-Windows
+          path: ./publish/TechCraftLauncher.exe
 
   # 3. Create Release (Only if check-version said true)
   create-release:
@@ -103,7 +103,7 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
-          name: VoidCraftLauncher-Windows
+          name: TechCraftLauncher-Windows
           path: ./release_assets
 
       - name: Extract Release Notes
@@ -129,7 +129,7 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           name: v${{ env.VERSION }}
-          files: ./release_assets/VoidCraftLauncher.exe
+          files: ./release_assets/TechCraftLauncher.exe
           body_path: release_body.md
           draft: false
           prerelease: ${{ contains(env.VERSION, 'alpha') || contains(env.VERSION, 'beta') }}
@@ -162,11 +162,11 @@ jobs:
            jq -n \
             --arg content "$CONTENT" \
             --arg body "$BODY" \
-            --arg title "VoidCraft Launcher v$VERSION" \
+            --arg title "TechCraft Launcher v$VERSION" \
             --arg url "https://github.com/${{ github.repository }}/releases/tag/v$VERSION" \
             --arg timestamp "$TIMESTAMP" \
             '{
-              username: "VoidCraft BuildBot",
+              username: "TechCraft BuildBot",
               avatar_url: "https://void-craft.eu/logo.png",
               content: $content,
               embeds: [{
