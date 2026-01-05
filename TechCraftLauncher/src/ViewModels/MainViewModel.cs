@@ -475,8 +475,9 @@ public partial class MainViewModel : ViewModelBase
 
         if (!IsLoggedIn)
         {
-            Greeting = "Nejdříve se přihlas!";
-            return;
+            //Warez override
+            // Greeting = "Nejdříve se přihlas!";
+            // return;
         }
 
         if (CurrentModpack?.CurrentVersion == null)
