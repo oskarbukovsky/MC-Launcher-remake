@@ -299,7 +299,7 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             // Using mcsrvstat.us API
-            var response = await _httpClient.GetStringAsync("https://api.mcsrvstat.us/2/mc.void-craft.eu");
+            var response = await _httpClient.GetStringAsync("https://api.mcsrvstat.us/2/play-tech-craft.666777123.xyz");
             var json = JsonNode.Parse(response);
             
             if (json != null && json["online"]?.GetValue<bool>() == true)
