@@ -12,7 +12,7 @@ Official custom Minecraft launcher for the **VOID-CRAFT** community. Built with 
 - 📁 **Centrální Data**: Všechny instance jsou uloženy v `Dokumenty/.TechCraft`.
 
 ## 📦 Instalace
-1. Stáhněte si nejnovější verzi z [Releases](https://github.com/venom74cz/void-craft.eu-Launcher/releases).
+1. Stáhněte si nejnovější verzi z [Releases](https://github.com/oskarbukovsky/MC-Launcher-remake/releases).
 2. Spusťte `TechCraftLauncher.exe`.
    - *Poznámka: Při prvním spuštění může Windows Defender zahlásit neznámou aplikaci (SmartScreen). Klikněte na "Přesto spustit".*
 
