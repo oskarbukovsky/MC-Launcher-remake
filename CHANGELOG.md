@@ -1,15 +1,19 @@
 # Changelog
 
-## 1.1.0-alpha
+## 1.1.0
 
 ### ✨ Nové Funkce
+- **Instalátor**: Profesionální instalátor (`Setup.exe`), který vytvoří zástupce na ploše a umožní snadnou správu aplikace.
+- **Auto-Update**: Plně automatický systém aktualizací. Launcher sám stáhne novou verzi, spustí instalátor a restartuje se.
 - **Offline Login**: Přidána možnost přihlášení pro "Warez" hráče (Offline Mode) přímo v aplikaci.
-- **In-App Login**: Přepracováno UI přihlašování – nyní se používá moderní vyskakovací okno (Overlay) místo přesměrování.
+- **Ukládání Relace**: Offline přezdívka se nyní pamatuje i po restartu.
+- **In-App Login**: Přepracováno UI přihlašování – nyní se používá moderní vyskakovací okno (Overlay).
 - **Odhlášení**: Přidáno tlačítko pro odhlášení uživatele.
+- **Linux**: Oficiální podpora pro Linux (AppImage + Binárka).
 
 ### 🔧 Opravy & Změny
 - **Auth**: Aktualizováno Microsoft Auth Client ID (schváleno Mojang).
-- **UI**: Vylepšen vzhled uživatelského profilu v postranním panelu.
+- **UI**: Vylepšen vzhled uživatelského profilu v postranním panelu a zobrazení verze.
 
 ## 1.0.3-alpha
 

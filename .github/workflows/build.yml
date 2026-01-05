@@ -27,7 +27,7 @@ jobs:
         id: get_version
         run: |
           if [ -f "VoidCraftLauncher/VoidCraftLauncher.csproj" ]; then
-             VERSION=$(grep -oP '<Version>\K[^<]+' VoidCraftLauncher/VoidCraftLauncher.csproj)
+             VERSION=$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' VoidCraftLauncher/VoidCraftLauncher.csproj)
           else
              echo "Error: .csproj file not found"
              exit 1
@@ -87,7 +87,7 @@ jobs:
         id: get_version
         shell: bash
         run: |
-          VERSION=$(grep -oP '<Version>\K[^<]+' VoidCraftLauncher/VoidCraftLauncher.csproj)
+          VERSION=$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' VoidCraftLauncher/VoidCraftLauncher.csproj)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Compile Installer (Inno Setup)
