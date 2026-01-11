@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0
+## 1.2.1
 
 ### ✨ Nové Funkce
 - **Potato Mode**: Přidán režim pro slabší počítače ("Bramborový režim").
@@ -9,8 +9,9 @@
     - Možnost upravit seznam zakázaných modů (`potato_mods.json`).
 - **Chytré Aktualizace**: Installer nyní respektuje vypnuté módy i při aktualizaci modpacku (zůstanou vypnuté).
 
-### 🔧 Vylepšení
-- **UI**: Přidána sekce "Potato Mode" do nastavení modpacku.
+### 🔧 Vylepšení & Opravy
+- **UI**: Lokalizace "Potato Mode" na "Bramborový režim".
+- **Build**: Oprava kompilace seznamu modů.
 
 ## 1.1.1
 
