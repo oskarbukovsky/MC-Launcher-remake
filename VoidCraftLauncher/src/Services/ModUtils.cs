@@ -11,6 +11,8 @@ namespace VoidCraftLauncher.Services
         private const string CONFIG_FILE_NAME = "potato_mods.json";
 
         // Default blacklist if none exists
+        private static readonly List<string> DEFAULT_POTATO_MODS = new()
+        {
             "distant-horizons", // Extreme performance impact
             "irisshaders",     // Shaders
             "oculus",          // Shaders alternative
