@@ -27,7 +27,7 @@ jobs:
         id: get_version
         run: |
           if [ -f "TechCraftLauncher/TechCraftLauncher.csproj" ]; then
-             VERSION=$(grep -oP '<Version>\K[^<]+' TechCraftLauncher/TechCraftLauncher.csproj)
+             VERSION=$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' TechCraftLauncher/TechCraftLauncher.csproj)
           else
              echo "Error: .csproj file not found"
              exit 1
@@ -80,15 +80,116 @@ jobs:
       - name: Publish
         run: dotnet publish TechCraftLauncher/TechCraftLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish
 
-      - name: Upload Artifact
+      - name: Install Inno Setup
+        run: choco install innosetup
+
+      - name: Get Version for Inno Setup
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' TechCraftLauncher/TechCraftLauncher.csproj)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Compile Installer (Inno Setup)
+        run: |
+           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.get_version.outputs.version }}" setup.iss
+
+      - name: Upload Artifact (Setup)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TechCraftLauncher-Setup
+          path: Output/TechCraftLauncher_Setup.exe
+
+      - name: Upload Artifact (Exe)
         uses: actions/upload-artifact@v4
         with:
           name: TechCraftLauncher-Windows
           path: ./publish/TechCraftLauncher.exe
 
+  # 2b. Build Linux (Binary + AppImage)
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore Dependencies
+        run: dotnet restore TechCraftLauncher/TechCraftLauncher.csproj
+
+      - name: Publish (Self-Contained)
+        run: dotnet publish TechCraftLauncher/TechCraftLauncher.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish_linux
+
+      - name: Prepare AppImage Structure
+        run: |
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p AppDir/usr/share/applications
+          
+          # Copy Binary
+          cp ./publish_linux/TechCraftLauncher AppDir/usr/bin/Techcraftlauncher
+          chmod +x AppDir/usr/bin/Techcraftlauncher
+          
+          # Get Icon (Assuming Tech-CRAFT.ico exists in root or convert it. For Linux preferred png)
+          # We will try to find a png or convert ico if possible, or just copy ico as fallback
+          # Using ImageMagick to convert ico to png if available (ubuntu-latest usually has it)
+          if [ -f "Tech-CRAFT.ico" ]; then
+             convert "Tech-CRAFT.ico[0]" AppDir/Techcraftlauncher.png || cp Tech-CRAFT.ico AppDir/Techcraftlauncher.png
+          else
+             touch AppDir/Techcraftlauncher.png # Dummy if missing
+          fi
+          cp AppDir/Techcraftlauncher.png AppDir/.DirIcon
+          cp AppDir/Techcraftlauncher.png AppDir/usr/share/icons/hicolor/256x256/apps/Techcraftlauncher.png
+          
+          # Create Desktop Entry
+          cat > AppDir/Techcraft-launcher.desktop <<EOF
+          [Desktop Entry]
+          Name=TechCraft Launcher
+          Exec=Techcraftlauncher
+          Icon=Techcraftlauncher
+          Type=Application
+          Categories=Game;
+          EOF
+          
+          cp AppDir/Techcraft-launcher.desktop AppDir/usr/share/applications/
+
+          # Create AppRun
+          cat > AppDir/AppRun <<EOF
+          #!/bin/sh
+          HERE="\$(dirname "\$(readlink -f "\${0}")")"
+          export PATH="\${HERE}/usr/bin:\${PATH}"
+          exec Techcraftlauncher "\$@"
+          EOF
+          chmod +x AppDir/AppRun
+
+      - name: Build AppImage and Upload
+        run: |
+          # Download appimagetool
+          wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          
+          # Build
+          ./appimagetool-x86_64.AppImage AppDir TechCraftLauncher-Linux-x64.AppImage
+          
+      - name: Upload Artifact (AppImage)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TechCraftLauncher-Linux-AppImage
+          path: TechCraftLauncher-Linux-x64.AppImage
+
+      - name: Upload Artifact (Binary)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TechCraftLauncher-Linux-Binary
+          path: ./publish_linux/TechCraftLauncher
+
   # 3. Create Release (Only if check-version said true)
   create-release:
-    needs: [build-windows, check-version]
+    needs: [build-windows, build-linux, check-version]
     if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -100,10 +201,28 @@ jobs:
       - name: Prepare Version
         run: echo "VERSION=${{ needs.check-version.outputs.version }}" >> $GITHUB_ENV
 
-      - name: Download Artifact
+      - name: Download Artifact (Windows Exe)
         uses: actions/download-artifact@v4
         with:
           name: TechCraftLauncher-Windows
+          path: ./release_assets
+
+      - name: Download Artifact (Windows Setup)
+        uses: actions/download-artifact@v4
+        with:
+          name: TechCraftLauncher-Setup
+          path: ./release_assets
+
+      - name: Download Artifact (Linux AppImage)
+        uses: actions/download-artifact@v4
+        with:
+          name: TechCraftLauncher-Linux-AppImage
+          path: ./release_assets
+      
+      - name: Download Artifact (Linux Binary)
+        uses: actions/download-artifact@v4
+        with:
+          name: TechCraftLauncher-Linux-Binary
           path: ./release_assets
 
       - name: Extract Release Notes
@@ -129,7 +248,11 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           name: v${{ env.VERSION }}
-          files: ./release_assets/TechCraftLauncher.exe
+          files: |
+            ./release_assets/TechCraftLauncher.exe
+            ./release_assets/TechCraftLauncher_Setup.exe
+            ./release_assets/TechCraftLauncher-Linux-x64.AppImage
+            ./release_assets/TechCraftLauncher
           body_path: release_body.md
           draft: false
           prerelease: ${{ contains(env.VERSION, 'alpha') || contains(env.VERSION, 'beta') }}
@@ -167,7 +290,7 @@ jobs:
             --arg timestamp "$TIMESTAMP" \
             '{
               username: "TechCraft BuildBot",
-              avatar_url: "https://void-craft.eu/logo.png",
+              avatar_url: "https://Tech-craft.eu/logo.png",
               content: $content,
               embeds: [{
                 title: $title,

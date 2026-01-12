@@ -137,8 +137,34 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private ModpackInfo? _runningModpack;
 
+    [ObservableProperty]
+    private bool _isLoginModalVisible = false;
+
+    [ObservableProperty]
+    private string _offlineUsername = "";
+
+    [ObservableProperty]
+    private string _appVersion = "v1.0.0"; // Placeholder
+
     public MainViewModel()
     {
+        // Set Version
+        var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        AppVersion = $"v{version?.ToString(3) ?? "?.?.?"}";
+
+        // Cleanup old update backups
+        try 
+        {
+            var myPath = Environment.ProcessPath;
+            if (myPath != null)
+            {
+                var bakPath = Path.ChangeExtension(myPath, ".bak");
+                if (File.Exists(bakPath)) File.Delete(bakPath);
+            }
+        }
+        catch { /* Ignore if locked */ }
+
+        // Restore offline username if used previously? (Can be added later if needed)
         _authService = new AuthService();
         _launcherService = new LauncherService();
         _curseForgeApi = new CurseForgeApi();
@@ -186,6 +212,12 @@ public partial class MainViewModel : ViewModelBase
             Debug.WriteLine($"Migration failed: {ex.Message}");
         }
 
+        // Restore offline username
+        if (!string.IsNullOrEmpty(Config.LastOfflineUsername))
+        {
+            OfflineUsername = Config.LastOfflineUsername;
+        }
+
         // Výchozí offline session
         _userSession = MSession.CreateOfflineSession("Guest");
         IsLoggedIn = false;
@@ -210,10 +242,12 @@ public partial class MainViewModel : ViewModelBase
         });
     }
     
-    private async Task CheckForUpdates()
+    [RelayCommand]
+    public async Task CheckForUpdates()
     {
         try
         {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "🔄 Kontroluji aktualizace...");
             LogService.Log("Checking for updates via GitHub...");
             var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
             
@@ -223,11 +257,17 @@ public partial class MainViewModel : ViewModelBase
             var response = await _httpClient.GetStringAsync("https://api.github.com/repos/oskarbukovsky/MC-Launcher-remake/releases/latest");
             var json = JsonNode.Parse(response);
             
-            var tagName = json?["tag_name"]?.ToString(); // e.g. "v1.0.1"
+            var tagName = json?["tag_name"]?.ToString(); // e.g. "v1.0.1" or "v1.0.1-alpha"
             var cleanVersion = tagName?.TrimStart('v');
-            var assets = json?["assets"]?.AsArray();
-            var downloadUrl = assets?.FirstOrDefault(a => a?["name"]?.ToString().EndsWith(".exe") == true)?["browser_download_url"]?.ToString();
+            
+            // Remove suffixes for comparison (simple check)
+            if (cleanVersion?.Contains('-') == true)
+                cleanVersion = cleanVersion.Split('-')[0];
 
+            var assets = json?["assets"]?.AsArray();
+            var downloadUrl = assets?.FirstOrDefault(a => a?["name"]?.ToString().EndsWith("Setup.exe") == true)?["browser_download_url"]?.ToString();
+            
+            // Only proceed if Setup.exe is found
             if (Version.TryParse(cleanVersion, out var latestVersion) && !string.IsNullOrEmpty(downloadUrl))
             {
                 if (latestVersion > currentVersion)
@@ -242,11 +282,18 @@ public partial class MainViewModel : ViewModelBase
                     // Perform Auto-Update
                     await PerformUpdate(downloadUrl);
                 }
+                else
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = $"✅ Máš nejnovější verzi ({currentVersion})");
+                    await Task.Delay(3000); // Show for 3s then restore
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = $"Vítejte, {UserSession?.Username ?? "Hráči"}!");
+                }
             }
         }
         catch (Exception ex)
         {
             LogService.Error("Update check failed", ex);
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "❌ Chyba kontroly aktualizací.");
         }
     }
 
@@ -254,42 +301,41 @@ public partial class MainViewModel : ViewModelBase
     {
         try
         {
-            var currentExe = Environment.ProcessPath;
-            var directory = Path.GetDirectoryName(currentExe);
-            var newExePath = Path.Combine(directory, "TechCraftLauncher.new");
-            var bakExePath = Path.Combine(directory, "TechCraftLauncher.bak");
-
-            // 1. Download new version
-            var data = await _httpClient.GetByteArrayAsync(url);
-            await File.WriteAllBytesAsync(newExePath, data);
-
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "Instaluji aktualizaci...");
-
-            // 2. Rename current exe to .bak (Windows allows renaming running files)
-            if (File.Exists(bakExePath)) File.Delete(bakExePath);
-            File.Move(currentExe, bakExePath);
-
-            // 3. Move new exe to current name
-            File.Move(newExePath, currentExe);
-
-            // 4. Restart
-            LogService.Log("Update applied. Restarting...");
-            Process.Start(new ProcessStartInfo 
-            { 
-                FileName = currentExe, 
-                UseShellExecute = true 
-            });
+            var tempPath = Path.Combine(Path.GetTempPath(), "TechCraftLauncher_Setup.exe");
             
+            // 1. Download Setup.exe
+            var data = await _httpClient.GetByteArrayAsync(url);
+            await File.WriteAllBytesAsync(tempPath, data);
+
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "Spouštím instalátor...");
+
+            // 2. Run Installer
+            // /VERYSILENT = No UI, /SUPPRESSMSGBOXES = No prompts, /NORESTART = Don't reboot OS
+            // But we might want /SILENT to show progress bar? User prefers "Clean Reinstall" so maybe full Wizard?
+            // "chci vždy aby to krásně reinstalovalo appku" implies visible process.
+            // Let's use /SILENT (Progress bar only) or default (Wizard). 
+            // Default is safest so user knows what is happening.
+            
+            LogService.Log("Update downloaded. running installer...");
+            
+            Process.Start(new ProcessStartInfo 
+            {
+                FileName = tempPath,
+                Arguments = "/SILENT /SP-", // Silent install, no startup prompt
+                UseShellExecute = true
+            });
+
+            // 3. Exit Launcher to allow overwrite
             Environment.Exit(0);
         }
         catch (Exception ex)
         {
-            LogService.Error("Auto-update failed", ex);
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "Chyba aktualizace (zkuste to ručně).");
-            
-            // Try to recover file names if possible? Risk of breaking.
+             LogService.Error("Update failed", ex);
+             Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "❌ Chyba aktualizace: " + ex.Message);
         }
     }
+
+
 
     [ObservableProperty]
     private string _serverMotd = "Načítání...";
@@ -318,7 +364,7 @@ public partial class MainViewModel : ViewModelBase
                     ServerPlayerCount = online;
                     ServerMaxPlayers = max;
                     ServerStatusText = $"{online}/{max} Hráčů";
-                    ServerMotd = motd ?? "Void Craft";
+                    ServerMotd = motd ?? "Void-Craft.eu";
                 });
             }
             else
@@ -714,6 +760,24 @@ public partial class MainViewModel : ViewModelBase
             {
                 jvmArgs.AddRange(Config.JvmArguments);
             }
+
+            // ---------------------------------------------------------
+            // APPLY POTATO MODE (Renaming files)
+            // ---------------------------------------------------------
+            bool potatoMode = overrideConfig?.PotatoModeEnabled ?? false;
+            LaunchStatus = potatoMode ? "Aplikuji Potato Mode (vypínám mody)..." : "Kontrola Potato Mode...";
+            
+            try
+            {
+               ModUtils.ApplyPotatoMode(modsDir, modpackDir, potatoMode);
+            }
+            catch (Exception ex)
+            {
+                // If file lock occurs, we should probably stop launch or warn?
+                // For now log and continue, unless critical?
+                LogService.Error("Failed to apply Potato Mode", ex);
+                // Ideally show dialog here if critical
+            }
             
             var gameProcess = await _launcherService.LaunchAsync(
                 mcVersion,
@@ -939,10 +1003,27 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public async Task Login()
+    public void OpenLoginModal()
+    {
+        if (IsLoggedIn) return;
+        IsLoginModalVisible = true;
+        IsLoginModalVisible = true;
+        // Pre-fill "Player" if empty and nothing in config
+        if (string.IsNullOrEmpty(OfflineUsername)) OfflineUsername = Config.LastOfflineUsername ?? "Player";
+    }
+
+    [RelayCommand]
+    public void CloseLoginModal()
+    {
+        IsLoginModalVisible = false;
+    }
+
+    [RelayCommand]
+    public async Task LoginMicrosoft()
     {
         try
         {
+            IsLoginModalVisible = false; // Hide modal
             IsWebviewVisible = true;
             IsBrowserPanelVisible = false;
             
@@ -960,6 +1041,64 @@ public partial class MainViewModel : ViewModelBase
         catch (System.Exception ex)
         {
             Greeting = $"Chyba přihlášení: {ex.Message}";
+            IsWebviewVisible = false;
+        }
+    }
+
+    [RelayCommand]
+    public void LoginOffline()
+    {
+        if (string.IsNullOrWhiteSpace(OfflineUsername))
+        {
+            Greeting = "Zadej prosím herní jméno.";
+            return;
+        }
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(OfflineUsername, "^[a-zA-Z0-9_]{3,16}$"))
+        {
+            Greeting = "Neplatné jméno (3-16 znaků, a-z, 0-9, _).";
+            return;
+        }
+
+        try
+        {
+            _launcherService.StopGame(); // Just in case
+            
+            UserSession = _authService.LoginOffline(OfflineUsername);
+            IsLoggedIn = true;
+            IsLoginModalVisible = false;
+            OnPropertyChanged(nameof(PlayerSkinUrl));
+            // Save username
+            Config.LastOfflineUsername = OfflineUsername;
+            _launcherService.SaveConfig(Config);
+
+            Greeting = $"Vítejte, {UserSession.Username} (Offline)!";
+        }
+        catch (Exception ex)
+        {
+            Greeting = $"Chyba přihlášení: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    public async Task Logout()
+    {
+        try 
+        {
+            await _authService.LogoutAsync();
+            
+            // Clear persistent session
+            Config.LastOfflineUsername = null;
+            _launcherService.SaveConfig(Config);
+
+            UserSession = MSession.CreateOfflineSession("Guest");
+            IsLoggedIn = false;
+            Greeting = "Byli jste odhlášeni.";
+            OnPropertyChanged(nameof(PlayerSkinUrl));
+        }
+        catch (Exception ex)
+        {
+            Greeting = $"Chyba při odhlašování: {ex.Message}";
         }
     }
 
@@ -1064,6 +1203,25 @@ public partial class MainViewModel : ViewModelBase
         // Persist to disk
         _launcherService.SaveConfig(Config);
         Greeting = $"Nastavení pro {CurrentModpackConfig.ModpackName} uloženo.";
+    }
+
+    [RelayCommand]
+    public void OpenPotatoConfig()
+    {
+        if (CurrentModpack == null) return;
+        
+        var modpackDir = _launcherService.GetModpackPath(CurrentModpack.Name);
+        // Ensure config exists
+        ModUtils.GetPotatoModList(modpackDir);
+        
+        // Open UI
+        var vm = new PotatoModsViewModel(modpackDir);
+        var window = new VoidCraftLauncher.Views.PotatoModsWindow { DataContext = vm };
+        
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            window.ShowDialog(desktop.MainWindow);
+        }
     }
 
     // --- Modpack Browser Logic ---
