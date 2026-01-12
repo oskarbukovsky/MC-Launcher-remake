@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Text.Json;
+using TechCraftLauncher.Models;
 using TechCraftLauncher.Models.CurseForge;
 
 namespace TechCraftLauncher.Services
@@ -110,6 +111,53 @@ namespace TechCraftLauncher.Services
                         {
                             modClassMap[m.Id] = m.ClassId;
                         }
+
+                        // METADATA PERSISTENCE
+                        try 
+                        {
+                            var metadataList = new List<ModMetadata>();
+                            // Try load existing
+                            var metadataPath = Path.Combine(installPath, "mods_metadata.json");
+                            if (File.Exists(metadataPath))
+                            {
+                                try 
+                                {
+                                    var existingJson = File.ReadAllText(metadataPath);
+                                    var existing = JsonSerializer.Deserialize<List<ModMetadata>>(existingJson);
+                                    if (existing != null) metadataList.AddRange(existing);
+                                } 
+                                catch {}
+                            }
+
+                            // Update/Add new
+                            foreach (var m in modsData.Data)
+                            {
+                                // Find associated file(s) for this mod
+                                var filesForMod = curseFiles.Where(f => f.ModId == m.Id);
+                                foreach(var f in filesForMod)
+                                {
+                                    // Remove existing entry for this filename if present
+                                    metadataList.RemoveAll(x => x.FileName == f.FileName);
+                                    
+                                    metadataList.Add(new ModMetadata
+                                    {
+                                        FileName = f.FileName,
+                                        Name = m.Name,
+                                        Slug = m.Slug,
+                                        Summary = m.Summary,
+                                        Categories = m.Categories?.Select(c => c.Name).ToList() ?? new List<string>()
+                                    });
+                                }
+                            }
+                            
+                            // Save back
+                            var metaJson = JsonSerializer.Serialize(metadataList, new JsonSerializerOptions { WriteIndented = true });
+                            File.WriteAllText(metadataPath, metaJson);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Failed to save mod metadata: {ex.Message}");
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -140,23 +188,28 @@ namespace TechCraftLauncher.Services
                 }
 
                 // A. Delete old mods (ONLY if they were installed by us previously)
-                // We primarily scan 'mods' folder. RPs in 'resourcepacks' might pile up if we don't track them well,
-                // but doing a full scan of all folders is risky.
-                // For now, let's clean 'mods' folder as usual.
-                var existingFiles = Directory.GetFiles(modsDir, "*.jar");
+                // We scan for both active (.jar) and disabled (.jar.disabled) files
+                var jarFiles = Directory.GetFiles(modsDir, "*.jar");
+                var disabledFiles = Directory.GetFiles(modsDir, "*.jar.disabled");
+                var existingFiles = jarFiles.Concat(disabledFiles).ToArray();
+                
                 var newModNames = curseFiles.Select(f => f.FileName).ToHashSet();
                 
                 foreach (var file in existingFiles)
                 {
                     var fileName = Path.GetFileName(file);
+                    // Remove .disabled suffix for comparison if present
+                    var pureFileName = fileName.EndsWith(".disabled") 
+                        ? fileName.Substring(0, fileName.Length - ".disabled".Length) 
+                        : fileName;
                     
-                    // If the file is not in the new manifest...
-                    if (!newModNames.Contains(fileName))
+                    // If the pure filename is not in the new manifest...
+                    if (!newModNames.Contains(pureFileName))
                     {
                         // ...AND we tracked it as installed previously -> it's an old version -> DELETE
-                        if (previouslyInstalledFiles.Contains(fileName))
+                        if (previouslyInstalledFiles.Contains(pureFileName))
                         {
-                            File.Delete(file);
+                            try { File.Delete(file); } catch {}
                             StatusChanged?.Invoke($"Odstraňuji starý soubor: {fileName}");
                         }
                     }
@@ -180,12 +233,14 @@ namespace TechCraftLauncher.Services
                     if (modClassMap.TryGetValue(mod.ModId, out int classId))
                     {
                         if (classId == 12) targetDir = rpDir; // Resource Pack
-                        else if (classId == 6552 || classId == 4546) targetDir = shaderDir; // Shader Pack (6552 is standard, 4546 is 'Twitch Integration' but sometimes used for customizations)
+                        else if (classId == 6552 || classId == 4546) targetDir = shaderDir; // Shader Pack
                     }
 
                     var destPath = Path.Combine(targetDir, mod.FileName);
+                    var disabledPath = destPath + ".disabled";
 
-                    if (File.Exists(destPath))
+                    // Check if file exists (enabled OR disabled)
+                    if (File.Exists(destPath) || File.Exists(disabledPath))
                     {
                         skipped++;
                         continue;

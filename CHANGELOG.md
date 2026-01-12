@@ -1,5 +1,52 @@
 # Changelog
 
+## 1.2.2
+
+### ✨ Nové Funkce
+- **Potato Mode UI**: Nové grafické rozhraní pro výběr vypnutých modů.
+    - Nahrazuje ruční editaci souboru `potato_mods.json`.
+    - Umožňuje snadné vyhledávání a filtrování modů.
+- **Metadata**: Launcher nyní ukládá metadata modů (Client-Side/Server-Side) pro chytřejší filtrování v budoucnu.
+
+### 🔧 Vylepšení
+- **Robustnost**: Seznam zakázaných modů nyní preferuje stabilní identifikátory (slugy) před názvy souborů.
+
+## 1.2.1
+
+### ✨ Nové Funkce
+- **Potato Mode**: Přidán režim pro slabší počítače ("Bramborový režim").
+    - Vypíná náročné vizuální módy (Shadery, Animace, Fyzika) pro zvýšení FPS.
+    - Nastavení je specifické pro každý modpack (výchozí stav: Vypnuto).
+    - Možnost upravit seznam zakázaných modů (`potato_mods.json`).
+- **Chytré Aktualizace**: Installer nyní respektuje vypnuté módy i při aktualizaci modpacku (zůstanou vypnuté).
+
+### 🔧 Vylepšení & Opravy
+- **UI**: Lokalizace "Potato Mode" na "Bramborový režim".
+- **Build**: Oprava kompilace seznamu modů.
+
+## 1.1.1
+
+### 🔧 Rychlé Opravy (Hotfix)
+- **UI Branding**: Opraveno názvosloví na **“VOID-CRAFT”** a přidáno logo copyrightu.
+- **Tlačítka**: Dynamická změna tlačítka “HRÁT” na “AKTUALIZOVAT” a “Instalovat” na “Stáhnout”.
+- **Offline Login**: Opraveno automatické přihlášení pro offline (Warez) účty.
+- **CI/CD Fix**: Opravena cesta k souborům pro instalátor v GitHub Actions.
+
+## 1.1.0
+
+### ✨ Nové Funkce
+- **Instalátor**: Profesionální instalátor (`Setup.exe`), který vytvoří zástupce na ploše a umožní snadnou správu aplikace.
+- **Auto-Update**: Plně automatický systém aktualizací. Launcher sám stáhne novou verzi, spustí instalátor a restartuje se.
+- **Offline Login**: Přidána možnost přihlášení pro "Warez" hráče (Offline Mode) přímo v aplikaci.
+- **Ukládání Relace**: Offline přezdívka se nyní pamatuje i po restartu.
+- **In-App Login**: Přepracováno UI přihlašování – nyní se používá moderní vyskakovací okno (Overlay).
+- **Odhlášení**: Přidáno tlačítko pro odhlášení uživatele.
+- **Linux**: Oficiální podpora pro Linux (AppImage + Binárka).
+
+### 🔧 Opravy & Změny
+- **Auth**: Aktualizováno Microsoft Auth Client ID (schváleno Mojang).
+- **UI**: Vylepšen vzhled uživatelského profilu v postranním panelu a zobrazení verze.
+
 ## 1.0.3-alpha
 
 ### 🔧 Opravy & Vylepšení
