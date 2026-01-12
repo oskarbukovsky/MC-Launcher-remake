@@ -1216,7 +1216,7 @@ public partial class MainViewModel : ViewModelBase
         
         // Open UI
         var vm = new PotatoModsViewModel(modpackDir);
-        var window = new VoidCraftLauncher.Views.PotatoModsWindow { DataContext = vm };
+        var window = new TechCraftLauncher.Views.PotatoModsWindow { DataContext = vm };
         
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
         {
