@@ -109,25 +109,18 @@
 
                         <!-- Quick Links -->
                         <StackPanel Spacing="0">
-                            <Button Content="🌐 Webové stránky" Command="{Binding OpenUrlCommand}" CommandParameter="https://void-craft.eu/"
+                            <Button Content="🌐 Webové stránky" Command="{Binding OpenUrlCommand}" CommandParameter="https://tech-craft.666777123.xyz/"
                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                     Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
                             
-                            <Button Content="💬 Discord" Command="{Binding OpenUrlCommand}" CommandParameter="https://discord.com/invite/8rjhkck9w4"
+                            <Button Content="💬 Discord" Command="{Binding OpenUrlCommand}" CommandParameter="https://discord.com/invite/cHVsyJdcxv"
                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                     Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
                             
-                            <Button Content="📘 Facebook" Command="{Binding OpenUrlCommand}" CommandParameter="https://www.facebook.com/share/17i6QGG6jn/"
+                            <Button Content="📸 Instagram" Command="{Binding OpenUrlCommand}" CommandParameter="https://www.instagram.com/tech.craft.mc/"
                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                     Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
                             
-                            <Button Content="📸 Instagram" Command="{Binding OpenUrlCommand}" CommandParameter="https://www.instagram.com/void_craft.eu"
-                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                    Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
-                            
-                            <Button Content="🎬 YouTube" Command="{Binding OpenUrlCommand}" CommandParameter="https://www.youtube.com/@void-craft-eu"
-                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                    Background="Transparent" Foreground="#AAAAAA" FontSize="12" Padding="10,6"/>
                         </StackPanel>
 
                     </StackPanel>
