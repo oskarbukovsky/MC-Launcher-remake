@@ -19,7 +19,7 @@ namespace TechCraftLauncher.ViewModels;
 public partial class MainViewModel : ViewModelBase
 {
     public ObservableCollection<ModpackInfo> InstalledModpacks { get; private set; }
-    
+
     private readonly AuthService _authService;
     private readonly LauncherService _launcherService;
     private readonly CurseForgeApi _curseForgeApi;
@@ -53,8 +53,8 @@ public partial class MainViewModel : ViewModelBase
     private bool _isLoggedIn;
 
     // Skin providers: mc-heads.net, crafatar.com, minotar.net
-    public string PlayerSkinUrl => UserSession?.UUID != null 
-        ? $"https://mc-heads.net/avatar/{UserSession.UUID.Replace("-", "")}/40" 
+    public string PlayerSkinUrl => UserSession?.UUID != null
+        ? $"https://mc-heads.net/avatar/{UserSession.UUID.Replace("-", "")}/40"
         : "https://mc-heads.net/avatar/MHF_Steve/40";
 
     // Expose Enum values for UI
@@ -153,7 +153,7 @@ public partial class MainViewModel : ViewModelBase
         AppVersion = $"v{version?.ToString(3) ?? "?.?.?"}";
 
         // Cleanup old update backups
-        try 
+        try
         {
             var myPath = Environment.ProcessPath;
             if (myPath != null)
@@ -170,10 +170,10 @@ public partial class MainViewModel : ViewModelBase
         _curseForgeApi = new CurseForgeApi();
         _modrinthApi = new ModrinthApi();
         _modpackInstaller = new ModpackInstaller(_curseForgeApi);
-        
+
         // Forward installer events to UI
         _modpackInstaller.StatusChanged += (status) => LaunchStatus = status;
-        _modpackInstaller.ProgressChanged += (progress) => 
+        _modpackInstaller.ProgressChanged += (progress) =>
         {
             LaunchProgress = progress * 100;
             IsLaunchIndeterminate = false;
@@ -181,22 +181,22 @@ public partial class MainViewModel : ViewModelBase
 
         _currentModpack = new ModpackInfo();
         InstalledModpacks = new ObservableCollection<ModpackInfo>();
-        
+
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "TechCraftLauncher/1.0");
-        
+
         // Load Config
-        try 
+        try
         {
             Config = _launcherService.LoadConfig();
-        } 
-        catch 
+        }
+        catch
         {
             Config = new LauncherConfig();
         }
-        
+
         // One-time migration to force Auto Java (User Request)
-        try 
+        try
         {
             var migrationFlag = Path.Combine(_launcherService.BasePath, "auto_java_migrated.flag");
             if (!File.Exists(migrationFlag) && _launcherService.BasePath != null)
@@ -224,15 +224,15 @@ public partial class MainViewModel : ViewModelBase
 
         // Spustíme načítání na pozadí
         Task.Run(LoadModpackData);
-        
+
         // Zkusíme auto-login z cache
         Task.Run(TryAutoLogin);
 
         // Update Check
         Task.Run(CheckForUpdates);
-        
+
         // Server Status Update Loop
-        Task.Run(async () => 
+        Task.Run(async () =>
         {
             while (true)
             {
@@ -241,7 +241,7 @@ public partial class MainViewModel : ViewModelBase
             }
         });
     }
-    
+
     [RelayCommand]
     public async Task CheckForUpdates()
     {
@@ -250,31 +250,31 @@ public partial class MainViewModel : ViewModelBase
             Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "🔄 Kontroluji aktualizace...");
             LogService.Log("Checking for updates via GitHub...");
             var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-            
+
             // GitHub API requires User-Agent
             _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("TechCraftLauncher");
-            
+
             var response = await _httpClient.GetStringAsync("https://api.github.com/repos/oskarbukovsky/MC-Launcher-remake/releases/latest");
             var json = JsonNode.Parse(response);
-            
+
             var tagName = json?["tag_name"]?.ToString(); // e.g. "v1.0.1" or "v1.0.1-alpha"
             var cleanVersion = tagName?.TrimStart('v');
-            
+
             // Remove suffixes for comparison (simple check)
             if (cleanVersion?.Contains('-') == true)
                 cleanVersion = cleanVersion.Split('-')[0];
 
             var assets = json?["assets"]?.AsArray();
             var downloadUrl = assets?.FirstOrDefault(a => a?["name"]?.ToString().EndsWith("Setup.exe") == true)?["browser_download_url"]?.ToString();
-            
+
             // Only proceed if Setup.exe is found
             if (Version.TryParse(cleanVersion, out var latestVersion) && !string.IsNullOrEmpty(downloadUrl))
             {
                 if (latestVersion > currentVersion)
                 {
                     LogService.Log($"New version found: {latestVersion} (Current: {currentVersion})");
-                    
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => 
+
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {
                         Greeting = $"Stahuji aktualizaci {tagName}...";
                     });
@@ -302,7 +302,7 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             var tempPath = Path.Combine(Path.GetTempPath(), "TechCraftLauncher_Setup.exe");
-            
+
             // 1. Download Setup.exe
             var data = await _httpClient.GetByteArrayAsync(url);
             await File.WriteAllBytesAsync(tempPath, data);
@@ -315,10 +315,10 @@ public partial class MainViewModel : ViewModelBase
             // "chci vždy aby to krásně reinstalovalo appku" implies visible process.
             // Let's use /SILENT (Progress bar only) or default (Wizard). 
             // Default is safest so user knows what is happening.
-            
+
             LogService.Log("Update downloaded. running installer...");
-            
-            Process.Start(new ProcessStartInfo 
+
+            Process.Start(new ProcessStartInfo
             {
                 FileName = tempPath,
                 Arguments = "/SILENT /SP-", // Silent install, no startup prompt
@@ -330,8 +330,8 @@ public partial class MainViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-             LogService.Error("Update failed", ex);
-             Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "❌ Chyba aktualizace: " + ex.Message);
+            LogService.Error("Update failed", ex);
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "❌ Chyba aktualizace: " + ex.Message);
         }
     }
 
@@ -347,13 +347,13 @@ public partial class MainViewModel : ViewModelBase
             // Using mcsrvstat.us API
             var response = await _httpClient.GetStringAsync("https://api.mcsrvstat.us/2/play-tech-craft.666777123.xyz");
             var json = JsonNode.Parse(response);
-            
+
             if (json != null && json["online"]?.GetValue<bool>() == true)
             {
                 var players = json["players"];
                 var online = players?["online"]?.GetValue<int>() ?? 0;
                 var max = players?["max"]?.GetValue<int>() ?? 0;
-                
+
                 // Parse MOTD (cleanup formatting codes if needed, but for now simple string)
                 var motdList = json["motd"]?["clean"]?.AsArray();
                 var motd = motdList != null && motdList.Count > 0 ? motdList[0]?.ToString() : "Void Craft";
@@ -390,9 +390,9 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "Přihlašuji...");
-            
+
             var session = await _authService.TrySilentLoginAsync();
-            
+
             if (session != null)
             {
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -400,17 +400,39 @@ public partial class MainViewModel : ViewModelBase
                     UserSession = session;
                     IsLoggedIn = true;
                     OnPropertyChanged(nameof(PlayerSkinUrl));
-                    Greeting = $"Vítejte, {session.Username}!";
+                    Greeting = $"Vítej {session.Username}!";
                 });
             }
             else
             {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "Vítejte ve TechCraft Launcheru!");
+                // Try Offline Auto-Login
+                if (!string.IsNullOrEmpty(Config.LastOfflineUsername))
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        try
+                        {
+                            UserSession = _authService.LoginOffline(Config.LastOfflineUsername);
+                            IsLoggedIn = true;
+                            OfflineUsername = Config.LastOfflineUsername;
+                            OnPropertyChanged(nameof(PlayerSkinUrl));
+                            Greeting = $"Vítejte zpět, {Config.LastOfflineUsername} (Offline)!";
+                        }
+                        catch
+                        {
+                            Greeting = "Vítejte v Tech-Craft Launcheru!";
+                        }
+                    });
+                }
+                else
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "Vítejte v Tech-Craft Launcheru!");
+                }
             }
         }
         catch
         {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "Vítejte ve TechCraft Launcheru!");
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "Vítejte v Tech-Craft Launcheru!");
         }
     }
 
@@ -420,19 +442,19 @@ public partial class MainViewModel : ViewModelBase
         {
             // VOID-BOX2 CurseForge Project ID
             const int VOID_BOX_PROJECT_ID = 998572;
-            
+
             LogService.Log($"[LoadModpackData] Fetching modpack ID: {VOID_BOX_PROJECT_ID}");
-            
+
             // 1. Získáme info o modpacku přímo pomocí ID
             var modpackJson = await _curseForgeApi.GetModpackInfoAsync(VOID_BOX_PROJECT_ID);
-            
+
             var root = JsonNode.Parse(modpackJson);
             var modpack = root?["data"];
             var name = modpack?["name"]?.ToString();
             var logo = modpack?["logo"]?["url"]?.ToString();
             var summary = modpack?["summary"]?.ToString();
             var id = modpack?["id"]?.GetValue<int>();
-            
+
             LogService.Log($"[LoadModpackData] Parsed - Name: {name}, ID: {id}");
 
             // Načteme všechny soubory (verze)
@@ -441,25 +463,25 @@ public partial class MainViewModel : ViewModelBase
 
             if (id.HasValue)
             {
-                try 
+                try
                 {
                     LogService.Log($"[LoadModpackData] Fetching files for ID: {id.Value}");
                     var filesJson = await _curseForgeApi.GetModpackFilesAsync(id.Value);
-                    
+
                     var filesNode = JsonNode.Parse(filesJson);
                     var files = filesNode?["data"]?.AsArray();
-                    
+
                     LogService.Log($"[LoadModpackData] Files count: {files?.Count ?? 0}");
-                    
+
                     if (files != null && files.Count > 0)
                     {
                         // Seřadíme od nejnovějšího
                         var sortedFiles = files.OrderByDescending(f => f?["fileDate"]?.ToString());
-                        
-                        foreach(var f in sortedFiles)
+
+                        foreach (var f in sortedFiles)
                         {
-                            var v = new ModpackVersion 
-                            { 
+                            var v = new ModpackVersion
+                            {
                                 Name = f?["displayName"]?.ToString() ?? "Unknown",
                                 FileId = f?["id"]?.ToString() ?? "0",
                                 ReleaseDate = f?["fileDate"]?.ToString() ?? ""
@@ -471,8 +493,8 @@ public partial class MainViewModel : ViewModelBase
                         LogService.Log($"[LoadModpackData] Selected version: {selectedVersion.Name}, FileId: {selectedVersion.FileId}");
                     }
                 }
-                catch (Exception ex) 
-                { 
+                catch (Exception ex)
+                {
                     LogService.Error("[LoadModpackData] Version fetch error", ex);
                 }
             }
@@ -494,7 +516,7 @@ public partial class MainViewModel : ViewModelBase
                 // Dispatcher? LoadModpackData runs in Task.Run
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => InstalledModpacks.Add(CurrentModpack));
             }
-            
+
             // Load other saved modpacks
             await Task.Run(LoadSavedModpacks);
         }
@@ -542,7 +564,7 @@ public partial class MainViewModel : ViewModelBase
             // ---------------------------------------------------------
             var modpackDir = _launcherService.GetModpackPath(CurrentModpack.Name);
             var modsDir = Path.Combine(modpackDir, "mods");
-            
+
             // Always try to verify/install to ensure file integrity (re-download missing mods/configs)
             bool attemptsInstall = true;
 
@@ -551,17 +573,17 @@ public partial class MainViewModel : ViewModelBase
                 bool apiSuccess = false;
                 ModpackManifestInfo manifestInfo = null;
                 LaunchStatus = "Ověřuji integritu souborů...";
-                
+
                 // Debug.WriteLine($"[PlayModpack] ProjectId: {CurrentModpack.ProjectId}, FileId: {CurrentModpack.CurrentVersion?.FileId}");
-                
+
                 // Check if we need to install/update
                 bool needsUpdate = true;
-                
+
                 // Load currently installed version info
                 ModpackManifestInfo installedManifest = ModpackInstaller.LoadManifestInfo(modpackDir);
-                
+
                 int fileId = 0;
-                
+
                 // Try to resolve target FileId
                 if (int.TryParse(CurrentModpack.CurrentVersion?.FileId, out var parsedId) && parsedId > 0)
                 {
@@ -570,39 +592,39 @@ public partial class MainViewModel : ViewModelBase
                 else if (CurrentModpack.ProjectId > 0)
                 {
                     // FileId missing (custom or API error), try fetch latest
-                     try
+                    try
+                    {
+                        LaunchStatus = "Načítám nejnovější verzi...";
+                        var filesJson = await _curseForgeApi.GetModpackFilesAsync(CurrentModpack.ProjectId);
+                        var filesNode = JsonNode.Parse(filesJson);
+                        var files = filesNode?["data"]?.AsArray();
+
+                        if (files != null && files.Count > 0)
                         {
-                            LaunchStatus = "Načítám nejnovější verzi...";
-                            var filesJson = await _curseForgeApi.GetModpackFilesAsync(CurrentModpack.ProjectId);
-                            var filesNode = JsonNode.Parse(filesJson);
-                            var files = filesNode?["data"]?.AsArray();
-                            
-                            if (files != null && files.Count > 0)
+                            // Get latest file by date
+                            var latestFile = files.OrderByDescending(f => f?["fileDate"]?.ToString()).FirstOrDefault();
+                            var latestFileId = latestFile?["id"]?.ToString();
+                            var latestFileName = latestFile?["displayName"]?.ToString();
+
+                            if (int.TryParse(latestFileId, out fileId) && fileId > 0)
                             {
-                                // Get latest file by date
-                                var latestFile = files.OrderByDescending(f => f?["fileDate"]?.ToString()).FirstOrDefault();
-                                var latestFileId = latestFile?["id"]?.ToString();
-                                var latestFileName = latestFile?["displayName"]?.ToString();
-                                
-                                if (int.TryParse(latestFileId, out fileId) && fileId > 0)
+                                // Update CurrentModpack with latest version
+                                CurrentModpack.CurrentVersion = new ModpackVersion
                                 {
-                                    // Update CurrentModpack with latest version
-                                    CurrentModpack.CurrentVersion = new ModpackVersion
-                                    {
-                                        Name = latestFileName ?? "Latest",
-                                        FileId = latestFileId,
-                                        ReleaseDate = latestFile?["fileDate"]?.ToString() ?? ""
-                                    };
-                                    Debug.WriteLine($"[PlayModpack] Fetched latest FileId: {fileId}");
-                                }
+                                    Name = latestFileName ?? "Latest",
+                                    FileId = latestFileId,
+                                    ReleaseDate = latestFile?["fileDate"]?.ToString() ?? ""
+                                };
+                                Debug.WriteLine($"[PlayModpack] Fetched latest FileId: {fileId}");
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            LogService.Error("[PlayModpack] Failed to fetch latest version", ex);
-                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.Error("[PlayModpack] Failed to fetch latest version", ex);
+                    }
                 }
-                
+
                 // COMPARE VERSIONS
                 if (installedManifest != null && fileId > 0 && installedManifest.FileId == fileId)
                 {
@@ -611,81 +633,81 @@ public partial class MainViewModel : ViewModelBase
                     needsUpdate = false;
                     apiSuccess = true; // Mark as success since we are good to go
                 }
-                
+
                 if (needsUpdate && CurrentModpack.ProjectId > 0 && fileId > 0)
                 {
-                        try 
+                    try
+                    {
+                        LaunchStatus = $"Získávám informace o modpacku...";
+
+                        // 2. Get Download URL
+                        var fileJson = await _curseForgeApi.GetModFileAsync(CurrentModpack.ProjectId, fileId);
+                        var node = JsonNode.Parse(fileJson);
+                        var dataNode = node?["data"];
+                        var downloadUrl = dataNode?["downloadUrl"]?.ToString();
+                        var fileName = dataNode?["fileName"]?.ToString() ?? "modpack.zip";
+
+                        // CurseForge often returns null downloadUrl, construct CDN URL as fallback
+                        if (string.IsNullOrEmpty(downloadUrl) && !string.IsNullOrEmpty(fileName))
                         {
-                            LaunchStatus = $"Získávám informace o modpacku...";
-                            
-                            // 2. Get Download URL
-                            var fileJson = await _curseForgeApi.GetModFileAsync(CurrentModpack.ProjectId, fileId);
-                            var node = JsonNode.Parse(fileJson);
-                            var dataNode = node?["data"];
-                            var downloadUrl = dataNode?["downloadUrl"]?.ToString();
-                            var fileName = dataNode?["fileName"]?.ToString() ?? "modpack.zip";
-                            
-                            // CurseForge often returns null downloadUrl, construct CDN URL as fallback
-                            if (string.IsNullOrEmpty(downloadUrl) && !string.IsNullOrEmpty(fileName))
+                            // CurseForge CDN pattern: https://edge.forgecdn.net/files/{first 4 digits}/{last digits}/{filename}
+                            var fileIdStr = fileId.ToString();
+                            if (fileIdStr.Length >= 4)
                             {
-                                // CurseForge CDN pattern: https://edge.forgecdn.net/files/{first 4 digits}/{last digits}/{filename}
-                                var fileIdStr = fileId.ToString();
-                                if (fileIdStr.Length >= 4)
-                                {
-                                    var part1 = fileIdStr.Substring(0, 4);
-                                    var part2 = fileIdStr.Substring(4);
-                                    downloadUrl = $"https://edge.forgecdn.net/files/{part1}/{part2}/{fileName}";
-                                }
-                            }
-
-                            if (!string.IsNullOrEmpty(downloadUrl))
-                            {
-                                LaunchStatus = "Stahuji manifest...";
-                                var tempZipPath = Path.Combine(Path.GetTempPath(), fileName);
-                                
-                                using (var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
-                                {
-                                    response.EnsureSuccessStatusCode();
-                                    var data = await response.Content.ReadAsByteArrayAsync();
-                                    await File.WriteAllBytesAsync(tempZipPath, data);
-                                }
-
-                                LaunchStatus = "Ověřuji mody...";
-                                // This checks for missing files and re-downloads them
-                                manifestInfo = await _modpackInstaller.InstallOrUpdateAsync(tempZipPath, modpackDir, fileId);
-                                apiSuccess = true;
-                                SaveModpacks();
-                                
-                                try { File.Delete(tempZipPath); } catch {}
+                                var part1 = fileIdStr.Substring(0, 4);
+                                var part2 = fileIdStr.Substring(4);
+                                downloadUrl = $"https://edge.forgecdn.net/files/{part1}/{part2}/{fileName}";
                             }
                         }
-                        catch (Exception ex)
+
+                        if (!string.IsNullOrEmpty(downloadUrl))
                         {
-                            LaunchStatus = $"Chyba aktualizace: {ex.Message} (Pokračuji offline)";
-                            // Removed delay
+                            LaunchStatus = "Stahuji manifest...";
+                            var tempZipPath = Path.Combine(Path.GetTempPath(), fileName);
+
+                            using (var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
+                            {
+                                response.EnsureSuccessStatusCode();
+                                var data = await response.Content.ReadAsByteArrayAsync();
+                                await File.WriteAllBytesAsync(tempZipPath, data);
+                            }
+
+                            LaunchStatus = "Ověřuji mody...";
+                            // This checks for missing files and re-downloads them
+                            manifestInfo = await _modpackInstaller.InstallOrUpdateAsync(tempZipPath, modpackDir, fileId);
+                            apiSuccess = true;
+                            SaveModpacks();
+
+                            try { File.Delete(tempZipPath); } catch { }
                         }
+                    }
+                    catch (Exception ex)
+                    {
+                        LaunchStatus = $"Chyba aktualizace: {ex.Message} (Pokračuji offline)";
+                        // Removed delay
+                    }
                 }
 
                 if (!apiSuccess && needsUpdate)
                 {
-                     // Try local backups or cached manifest checking
+                    // Try local backups or cached manifest checking
                     var downloadsDir = Path.Combine(_launcherService.BasePath, "downloads");
                     if (Directory.Exists(downloadsDir))
                     {
                         var possibleZips = Directory.GetFiles(downloadsDir, "*.zip");
-                        var localZip = possibleZips.FirstOrDefault(); 
+                        var localZip = possibleZips.FirstOrDefault();
                         if (!string.IsNullOrEmpty(localZip))
                         {
-                             LaunchStatus = "Instaluji z lokální zálohy...";
-                             manifestInfo = await _modpackInstaller.InstallOrUpdateAsync(localZip, modpackDir, fileId);
+                            LaunchStatus = "Instaluji z lokální zálohy...";
+                            manifestInfo = await _modpackInstaller.InstallOrUpdateAsync(localZip, modpackDir, fileId);
                         }
                     }
                 }
-                
+
                 // If installation/verification failed (e.g. offline), try to load cached manifest info from disk
                 if (manifestInfo == null)
                 {
-                    LaunchStatus = "Načítám kached informace...";
+                    LaunchStatus = "Načítám cached informace...";
                     manifestInfo = TechCraftLauncher.Services.ModpackInstaller.LoadManifestInfo(modpackDir);
                 }
 
@@ -696,27 +718,27 @@ public partial class MainViewModel : ViewModelBase
                 }
                 else
                 {
-                     LaunchStatus = "Chyba: Nepodařilo se načíst informace o verzi (Offline a žádná cache).";
-                     await Task.Delay(3000); // Keep this delay so user can see the error
-                     IsLaunching = false;
-                     return;
+                    LaunchStatus = "Chyba: Nepodařilo se načíst informace o verzi (Offline a žádná cache).";
+                    await Task.Delay(3000); // Keep this delay so user can see the error
+                    IsLaunching = false;
+                    return;
                 }
             }
-            
+
             LaunchStatus = "Spouštím hru...";
 
             // Get Minecraft version from manifest (dynamically)
             var mcVersion = _lastManifestInfo?.MinecraftVersion ?? "1.21.1";
             var modLoaderId = _lastManifestInfo?.ModLoaderId ?? "";
-            
+
             var jvmArgs = new List<string>();
 
 
             // Check for instance-specific overrides or global config
-            bool enableOptimizations = Config.InstanceOverrides.TryGetValue(CurrentModpack.Name, out var overrideConfig) 
+            bool enableOptimizations = Config.InstanceOverrides.TryGetValue(CurrentModpack.Name, out var overrideConfig)
                 ? (overrideConfig.OverrideEnableOptimizationFlags ?? Config.EnableOptimizationFlags)
                 : Config.EnableOptimizationFlags;
-            
+
             if (enableOptimizations)
             {
                 // General Optimizations (Safe for all)
@@ -766,10 +788,10 @@ public partial class MainViewModel : ViewModelBase
             // ---------------------------------------------------------
             bool potatoMode = overrideConfig?.PotatoModeEnabled ?? false;
             LaunchStatus = potatoMode ? "Aplikuji Potato Mode (vypínám mody)..." : "Kontrola Potato Mode...";
-            
+
             try
             {
-               ModUtils.ApplyPotatoMode(modsDir, modpackDir, potatoMode);
+                ModUtils.ApplyPotatoMode(modsDir, modpackDir, potatoMode);
             }
             catch (Exception ex)
             {
@@ -778,7 +800,7 @@ public partial class MainViewModel : ViewModelBase
                 LogService.Error("Failed to apply Potato Mode", ex);
                 // Ideally show dialog here if critical
             }
-            
+
             var gameProcess = await _launcherService.LaunchAsync(
                 mcVersion,
                 UserSession,
@@ -790,11 +812,11 @@ public partial class MainViewModel : ViewModelBase
                 (percent) => Avalonia.Threading.Dispatcher.UIThread.Post(() => LaunchProgress = percent),
                 (file) => Avalonia.Threading.Dispatcher.UIThread.Post(() => LaunchStatus = $"Stahuji: {file}")
             );
-            
+
             // Redirect output for debugging
             gameProcess.StartInfo.RedirectStandardOutput = true;
             gameProcess.StartInfo.RedirectStandardError = true;
-            
+
             // Log file for troubleshooting
             // Log file for troubleshooting via LogService
             LogService.Log($"--- GAME START ---", "GAME");
@@ -808,7 +830,7 @@ public partial class MainViewModel : ViewModelBase
 
             gameProcess.OutputDataReceived += (s, e) => LogTo("STDOUT", e.Data);
             gameProcess.ErrorDataReceived += (s, e) => LogTo("STDERR", e.Data);
-            
+
             gameProcess.Start();
             gameProcess.BeginOutputReadLine();
             gameProcess.BeginErrorReadLine();
@@ -817,15 +839,15 @@ public partial class MainViewModel : ViewModelBase
             IsGameRunning = true;
             RunningModpack = CurrentModpack;
             LaunchProgress = 100;
-            
+
             // Wait for game to exit in background
-            _ = Task.Run(async () => 
+            _ = Task.Run(async () =>
             {
                 await gameProcess.WaitForExitAsync();
                 var exitCode = gameProcess.ExitCode;
                 LogTo("LAUNCHER", $"Game exited with code {exitCode}");
-                
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => 
+
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
                     IsGameRunning = false;
                     RunningModpack = null;
@@ -918,18 +940,18 @@ public partial class MainViewModel : ViewModelBase
     public async Task DeleteModpackContext(ModpackInfo modpack)
     {
         if (modpack == null) return;
-        if (!modpack.IsDeletable) 
+        if (!modpack.IsDeletable)
         {
             Greeting = "Tento modpack nelze odstranit.";
             return;
         }
-        
+
         var modpackName = modpack.Name;
         var modpackPath = _launcherService.GetModpackPath(modpackName);
-        
+
         // Remove from library
         InstalledModpacks.Remove(modpack);
-        
+
         // Delete files if directory exists
         if (Directory.Exists(modpackPath))
         {
@@ -947,13 +969,13 @@ public partial class MainViewModel : ViewModelBase
         {
             Greeting = $"Modpack {modpackName} odebrán z knihovny.";
         }
-        
+
         // Update current modpack
         if (CurrentModpack == modpack)
         {
             CurrentModpack = InstalledModpacks.FirstOrDefault();
         }
-        
+
         SaveModpacks(); // Save changes
     }
 
@@ -988,9 +1010,9 @@ public partial class MainViewModel : ViewModelBase
             {
                 await topLevel.Clipboard.SetTextAsync("mc.void-craft.eu");
                 Greeting = "IP adresa zkopírována!";
-                
+
                 // Reset greeting after 2 seconds
-                _ = Task.Delay(2000).ContinueWith(_ => 
+                _ = Task.Delay(2000).ContinueWith(_ =>
                 {
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "Vítejte ve TechCraft Launcheru!");
                 });
@@ -1026,12 +1048,12 @@ public partial class MainViewModel : ViewModelBase
             IsLoginModalVisible = false; // Hide modal
             IsWebviewVisible = true;
             IsBrowserPanelVisible = false;
-            
+
             var session = await _authService.LoginWithBrowserAsync((msg) =>
             {
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = msg);
             });
-            
+
             UserSession = session;
             IsLoggedIn = true;
             IsWebviewVisible = false;
@@ -1063,7 +1085,7 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             _launcherService.StopGame(); // Just in case
-            
+
             UserSession = _authService.LoginOffline(OfflineUsername);
             IsLoggedIn = true;
             IsLoginModalVisible = false;
@@ -1083,10 +1105,10 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     public async Task Logout()
     {
-        try 
+        try
         {
             await _authService.LogoutAsync();
-            
+
             // Clear persistent session
             Config.LastOfflineUsername = null;
             _launcherService.SaveConfig(Config);
@@ -1107,13 +1129,13 @@ public partial class MainViewModel : ViewModelBase
     public async Task DeleteModpack()
     {
         if (CurrentModpack == null) return;
-        
+
         var modpackName = CurrentModpack.Name;
         var modpackPath = _launcherService.GetModpackPath(modpackName);
-        
+
         // Remove from library
         InstalledModpacks.Remove(CurrentModpack);
-        
+
         // Delete files if directory exists
         if (Directory.Exists(modpackPath))
         {
@@ -1131,7 +1153,7 @@ public partial class MainViewModel : ViewModelBase
         {
             Greeting = $"Modpack {modpackName} odebrán z knihovny.";
         }
-        
+
         // Clear current modpack
         CurrentModpack = InstalledModpacks.FirstOrDefault();
         GoToHome();
@@ -1142,9 +1164,9 @@ public partial class MainViewModel : ViewModelBase
     {
         _launcherService.SaveConfig(Config);
         Greeting = "Nastavení uloženo.";
-        GoToHome(); 
+        GoToHome();
         // Reset greeting after 2s
-        _ = Task.Delay(2000).ContinueWith(_ => 
+        _ = Task.Delay(2000).ContinueWith(_ =>
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = "Vítejte ve TechCraft Launcheru");
         });
@@ -1182,8 +1204,8 @@ public partial class MainViewModel : ViewModelBase
         }
         else
         {
-            CurrentModpackConfig = new InstanceConfig 
-            { 
+            CurrentModpackConfig = new InstanceConfig
+            {
                 ModpackName = CurrentModpack.Name,
                 IsEnabled = true
             };
@@ -1209,15 +1231,15 @@ public partial class MainViewModel : ViewModelBase
     public void OpenPotatoConfig()
     {
         if (CurrentModpack == null) return;
-        
+
         var modpackDir = _launcherService.GetModpackPath(CurrentModpack.Name);
         // Ensure config exists
         ModUtils.GetPotatoModList(modpackDir);
-        
+
         // Open UI
         var vm = new PotatoModsViewModel(modpackDir);
         var window = new TechCraftLauncher.Views.PotatoModsWindow { DataContext = vm };
-        
+
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
         {
             window.ShowDialog(desktop.MainWindow);
@@ -1245,7 +1267,7 @@ public partial class MainViewModel : ViewModelBase
         BrowserSearchQuery = "";
         BrowserResults.Clear();
         CurrentRightView = RightViewType.Browser;
-        
+
         // Populate with popular modpacks initially
         SearchModpacksCommand.Execute(null);
     }
@@ -1286,27 +1308,27 @@ public partial class MainViewModel : ViewModelBase
         else
             json = await _curseForgeApi.SearchModpacksAsync(BrowserSearchQuery);
 
-         var root = JsonNode.Parse(json);
-         var data = root?["data"]?.AsArray();
+        var root = JsonNode.Parse(json);
+        var data = root?["data"]?.AsArray();
 
-         if (data != null)
-         {
-             foreach (var item in data)
-             {
-                 var mp = new ModpackItem
-                 {
-                     Name = item["name"]?.ToString() ?? "Unknown",
-                     Description = item["summary"]?.ToString() ?? "",
-                     Author = item["authors"]?[0]?["name"]?.ToString() ?? "Unknown",
-                     IconUrl = item["logo"]?["thumbnailUrl"]?.ToString() ?? "",
-                     Id = item["id"]?.ToString() ?? "",
-                     Source = "CurseForge",
-                     WebLink = item["links"]?["websiteUrl"]?.ToString() ?? "",
-                     DownloadCount = item["downloadCount"]?.GetValue<long>() ?? 0
-                 };
-                 BrowserResults.Add(mp);
-             }
-         }
+        if (data != null)
+        {
+            foreach (var item in data)
+            {
+                var mp = new ModpackItem
+                {
+                    Name = item["name"]?.ToString() ?? "Unknown",
+                    Description = item["summary"]?.ToString() ?? "",
+                    Author = item["authors"]?[0]?["name"]?.ToString() ?? "Unknown",
+                    IconUrl = item["logo"]?["thumbnailUrl"]?.ToString() ?? "",
+                    Id = item["id"]?.ToString() ?? "",
+                    Source = "CurseForge",
+                    WebLink = item["links"]?["websiteUrl"]?.ToString() ?? "",
+                    DownloadCount = item["downloadCount"]?.GetValue<long>() ?? 0
+                };
+                BrowserResults.Add(mp);
+            }
+        }
     }
 
     private async Task SearchModrinth()
@@ -1335,7 +1357,7 @@ public partial class MainViewModel : ViewModelBase
             }
         }
     }
-    
+
     [RelayCommand]
     public void OpenDashboard(ModpackInfo modpack)
     {
@@ -1361,10 +1383,10 @@ public partial class MainViewModel : ViewModelBase
     public async Task InstallModpackFromBrowser(ModpackItem item)
     {
         if (IsSearching || IsLaunching) return;
-        
+
         // 1. Immediate UI switch
         IsSearching = false; // Close browser logic if needed, but we switch view
-        
+
         // Create temporary ModpackInfo so it shows up immediately
         var newModpack = new ModpackInfo
         {
@@ -1373,22 +1395,22 @@ public partial class MainViewModel : ViewModelBase
             Description = item.Description,
             ProjectId = 0 // Will be updated if CF
         };
-        
-                CurrentModpack = newModpack;
-                
-                // Add to Library
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => InstalledModpacks.Add(CurrentModpack));
-                
-                // Switch to Library (Home) so user sees it in grid
-                GoToHome(); 
-                
-                // 2. Start Installation Task
+
+        CurrentModpack = newModpack;
+
+        // Add to Library
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => InstalledModpacks.Add(CurrentModpack));
+
+        // Switch to Library (Home) so user sees it in grid
+        GoToHome();
+
+        // 2. Start Installation Task
         // Run in background but linked to UI
-        Task.Run(async () => 
+        Task.Run(async () =>
         {
             try
             {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => 
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
                     IsLaunching = true; // Show Progress Bar
                     LaunchStatus = $"Připravuji instalaci {item.Name}...";
@@ -1407,9 +1429,9 @@ public partial class MainViewModel : ViewModelBase
                         var json = await _curseForgeApi.GetModpackFilesAsync(int.Parse(item.Id));
                         var root = JsonNode.Parse(json);
                         var data = root?["data"]?.AsArray();
-                        
-                        var file = data?.Where(x => x?["releaseType"]?.GetValue<int>() == 1).FirstOrDefault() 
-                                   ?? data?.FirstOrDefault(); 
+
+                        var file = data?.Where(x => x?["releaseType"]?.GetValue<int>() == 1).FirstOrDefault()
+                                   ?? data?.FirstOrDefault();
 
                         if (file == null) throw new Exception("Nenalezena žádná verze.");
 
@@ -1429,7 +1451,7 @@ public partial class MainViewModel : ViewModelBase
                         var files = version["files"]?.AsArray();
                         var primaryFile = files?.FirstOrDefault(f => f?["primary"]?.GetValue<bool>() == true)
                                           ?? files?.FirstOrDefault();
-                        
+
                         if (primaryFile == null) throw new Exception("Chybí soubor verze.");
 
                         downloadUrl = primaryFile["url"]?.ToString();
@@ -1442,39 +1464,39 @@ public partial class MainViewModel : ViewModelBase
                     // 2.2 Download
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => LaunchStatus = "Stahuji balíček...");
                     var tempPath = Path.Combine(Path.GetTempPath(), fileName);
-                    
+
                     // Simple progress tracking for download?
                     // reusing existing _httpClient might be better but for now simple
                     var fileBytes = await httpClient.GetByteArrayAsync(downloadUrl);
                     await File.WriteAllBytesAsync(tempPath, fileBytes);
-                    
+
                     // 2.3 Install
                     var safeName = string.Join("_", item.Name.Split(Path.GetInvalidFileNameChars())).Trim();
                     var installPath = _launcherService.GetModpackPath(safeName);
-                    
+
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => LaunchStatus = "Instaluji...");
 
                     void OnStatus(string s) => Avalonia.Threading.Dispatcher.UIThread.Post(() => LaunchStatus = s);
                     void OnProgress(double p) => Avalonia.Threading.Dispatcher.UIThread.Post(() => LaunchProgress = p * 100);
-                    
+
                     _modpackInstaller.StatusChanged += OnStatus;
                     _modpackInstaller.ProgressChanged += OnProgress;
 
                     ModpackManifestInfo manifestInfo = new ModpackManifestInfo();
-                    try 
+                    try
                     {
                         manifestInfo = await _modpackInstaller.InstallOrUpdateAsync(tempPath, installPath);
                     }
                     catch (Exception ex)
                     {
-                         Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = $"Chyba instalace: {ex.Message}");
-                         Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = $"Chyba instalace: {ex.Message}");
-                         LogService.Error("Install Modpack Error", ex);
-                         
-                         // Cleanup failed install
-                         try { Directory.Delete(installPath, true); } catch {}
-                         
-                         return;
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = $"Chyba instalace: {ex.Message}");
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() => Greeting = $"Chyba instalace: {ex.Message}");
+                        LogService.Error("Install Modpack Error", ex);
+
+                        // Cleanup failed install
+                        try { Directory.Delete(installPath, true); } catch { }
+
+                        return;
                     }
                     finally
                     {
@@ -1484,14 +1506,14 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     // 2.4 Update Modpack Info with real details
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => 
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {
-                        var versionInfo = new ModpackVersion 
-                        { 
-                            Name = item.Source == "CurseForge" ? "Latest" : (versionId ?? "1.0"), 
+                        var versionInfo = new ModpackVersion
+                        {
+                            Name = item.Source == "CurseForge" ? "Latest" : (versionId ?? "1.0"),
                             FileId = versionId ?? "0"
                         };
-                        
+
                         // Update the object in place if possible, or create new
                         CurrentModpack = new ModpackInfo
                         {
@@ -1504,7 +1526,7 @@ public partial class MainViewModel : ViewModelBase
 
                         // Add to library and save
                         // Check for existing modpack by ProjectId or Name
-                        var existing = InstalledModpacks.FirstOrDefault(m => 
+                        var existing = InstalledModpacks.FirstOrDefault(m =>
                             (CurrentModpack.ProjectId > 0 && m.ProjectId == CurrentModpack.ProjectId) ||
                             m.Name.Equals(CurrentModpack.Name, StringComparison.OrdinalIgnoreCase));
 
@@ -1528,7 +1550,7 @@ public partial class MainViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => 
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
                     IsLaunching = false;
                     Greeting = $"Chyba instalace: {ex.Message}";
@@ -1545,10 +1567,10 @@ public partial class MainViewModel : ViewModelBase
             // Save to src/installed_modpacks.json or BasePath? LauncherService.BasePath is better.
             var path = Path.Combine(_launcherService.BasePath, "installed_modpacks.json");
             var options = new JsonSerializerOptions { WriteIndented = true };
-            
+
             // Filter out duplicate or invalid entries if needed
             var listToSave = InstalledModpacks.ToList();
-            
+
             var json = JsonSerializer.Serialize(listToSave, options);
             File.WriteAllText(path, json);
             Debug.WriteLine($"[SaveModpacks] Saved {listToSave.Count} modpacks to {path}");
@@ -1568,7 +1590,7 @@ public partial class MainViewModel : ViewModelBase
             {
                 var json = File.ReadAllText(path);
                 var list = JsonSerializer.Deserialize<List<ModpackInfo>>(json);
-                
+
                 if (list != null)
                 {
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
